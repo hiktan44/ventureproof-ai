@@ -4,9 +4,9 @@ import { Check, CreditCard } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 const plans = [
-  { id: "starter", name: "Starter", price: "EUR 19.99", credits: 200, bestForKey: "pricing.starterBest", perkKeys: ["pricing.validations", "pricing.exports", "pricing.evidenceLabels"] },
-  { id: "builder", name: "Builder", price: "EUR 49.99", credits: 800, bestForKey: "pricing.builderBest", perkKeys: ["pricing.marketPlan", "pricing.brandStrategy", "pricing.marketingSuite"] },
-  { id: "founder", name: "Founder", price: "EUR 99.99", credits: 1800, bestForKey: "pricing.founderBest", perkKeys: ["pricing.liveMonitoring", "pricing.launchKits", "pricing.priority"] }
+  { id: "starter", nameKey: "pricing.plan.starter", price: "EUR 19.99", credits: 200, bestForKey: "pricing.starterBest", perkKeys: ["pricing.validations", "pricing.exports", "pricing.evidenceLabels"] },
+  { id: "builder", nameKey: "pricing.plan.builder", price: "EUR 49.99", credits: 800, bestForKey: "pricing.builderBest", perkKeys: ["pricing.marketPlan", "pricing.brandStrategy", "pricing.marketingSuite"] },
+  { id: "founder", nameKey: "pricing.plan.founder", price: "EUR 99.99", credits: 1800, bestForKey: "pricing.founderBest", perkKeys: ["pricing.liveMonitoring", "pricing.launchKits", "pricing.priority"] }
 ];
 
 export function PricingCards({ onPurchase }: { onPurchase?: (pack: string) => void }) {
@@ -18,10 +18,10 @@ export function PricingCards({ onPurchase }: { onPurchase?: (pack: string) => vo
         <div key={plan.id} className="panel p-5 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-xl font-black">{plan.name}</h3>
+              <h3 className="text-xl font-black">{t(plan.nameKey)}</h3>
               <p className="mt-1 text-sm text-ink/65">{t(plan.bestForKey)}</p>
             </div>
-            <span className="chip bg-citrus/50">{plan.credits} cr</span>
+            <span className="chip bg-citrus/50">{plan.credits} {t("dashboard.credits")}</span>
           </div>
           <div className="mt-5 text-3xl font-black">{plan.price}</div>
           <ul className="mt-5 space-y-3 text-sm">

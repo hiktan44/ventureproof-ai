@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const user = await requireCurrentUser();
     const body = schema.parse(await request.json());
     const db = await readDb();
-    addCredits(db, user.id, packs[body.pack], `Mock purchase: ${body.pack}`);
+    addCredits(db, user.id, packs[body.pack], `Test ödeme: ${body.pack} paketi`);
     recordPayment(db, {
       userId: user.id,
       pack: body.pack,

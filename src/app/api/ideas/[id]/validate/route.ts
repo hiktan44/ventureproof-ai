@@ -11,9 +11,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     const db = await readDb();
     const freshUser = db.users.find((entry) => entry.id === user.id);
     const idea = db.ideas.find((entry) => entry.id === id && entry.userId === user.id);
-    if (!freshUser || !idea) return NextResponse.json({ error: "Idea not found" }, { status: 404 });
+    if (!freshUser || !idea) return NextResponse.json({ error: "Fikir bulunamadı." }, { status: 404 });
 
-    spendCredits(db, user.id, moduleCosts.validation, "Idea Validation", idea.id);
+    spendCredits(db, user.id, moduleCosts.validation, "Fikir Doğrulama", idea.id);
     idea.modules.validation = "complete";
     idea.modules.market = "ready";
     idea.modules.businessPlan = "ready";
@@ -27,9 +27,9 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     await writeDb(db);
     return NextResponse.json({ idea, report, user: publicUser(freshUser) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Validation failed";
+    const message = error instanceof Error ? error.message : "Doğrulama başarısız.";
     if (message === "INSUFFICIENT_CREDITS") {
-      return NextResponse.json({ error: "Yetersiz kredi. Lutfen kredi yukleyin." }, { status: 402 });
+      return NextResponse.json({ error: "Yetersiz kredi. Lütfen kredi yükleyin veya adminden ücretsiz kredi isteyin." }, { status: 402 });
     }
     return NextResponse.json({ error: message }, { status: message === "UNAUTHENTICATED" ? 401 : 400 });
   }

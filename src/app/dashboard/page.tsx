@@ -30,7 +30,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { PricingCards } from "@/components/PricingCards";
 import { ScoreRing } from "@/components/ScoreRing";
 import { useLanguage } from "@/lib/i18n";
-import { moduleCosts, type CreditLedgerEntry, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report } from "@/types/domain";
+import { moduleCosts, type CreditLedgerEntry, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report, type ReportSection } from "@/types/domain";
 
 type SessionUser = { id: string; email: string; name: string; credits: number; role?: "user" | "admin" };
 type TabKey = "summary" | "scores" | "market" | "financials" | "roadmap" | "experiments" | "billing";
@@ -222,8 +222,8 @@ function DashboardContent() {
       "",
       report.executiveSummary,
       "",
-      `Viability: ${report.scores.viability}/100`,
-      `Confidence: ${report.scores.confidence}/100`,
+      `${t("score.viability")}: ${report.scores.viability}/100`,
+      `${t("score.confidence")}: ${report.scores.confidence}/100`,
       "",
       `## ${t("dashboard.goSignals")}`,
       ...report.goSignals.map((signal) => `- ${signal}`),
@@ -268,7 +268,7 @@ function DashboardContent() {
           <button className="btn mt-6 w-full" onClick={() => document.getElementById("new-idea")?.scrollIntoView({ behavior: "smooth" })}>
             <Plus size={16} />
             {t("dashboard.validateNew")}
-            <span className="rounded bg-white/15 px-1.5 py-0.5 text-xs">{moduleCosts.validation}cr</span>
+            <span className="rounded bg-white/15 px-1.5 py-0.5 text-xs">{moduleCosts.validation} {t("dashboard.credits")}</span>
           </button>
           <div className="mt-6 text-xs font-black uppercase text-ink/45">{t("dashboard.myIdeas")}</div>
           <div className="mt-3 space-y-2">
@@ -369,9 +369,9 @@ function DashboardContent() {
                 <div className="mt-5">
                   {tab === "summary" && <Summary idea={selectedIdea} report={report} onValidate={() => validateIdea(selectedIdea.id)} busy={busy} />}
                   {tab === "scores" && <Scores report={report} />}
-                  {tab === "market" && <ModuleAndSections idea={selectedIdea} modules={["market"]} report={report} filter="Market" />}
-                  {tab === "financials" && <ModuleAndSections idea={selectedIdea} modules={["businessPlan"]} report={report} filter="Financials" />}
-                  {tab === "roadmap" && <ModuleAndSections idea={selectedIdea} modules={["brand", "visual", "marketing"]} report={report} filter="Roadmap" />}
+                  {tab === "market" && <ModuleAndSections idea={selectedIdea} modules={["market"]} report={report} categories={["market", "competition"]} />}
+                  {tab === "financials" && <ModuleAndSections idea={selectedIdea} modules={["businessPlan"]} report={report} categories={["financials"]} />}
+                  {tab === "roadmap" && <ModuleAndSections idea={selectedIdea} modules={["brand", "visual", "marketing"]} report={report} categories={["roadmap", "risk", "gtm"]} />}
                   {tab === "experiments" && <Experiments idea={selectedIdea} onStatus={updateExperiment} onEvidence={addEvidence} />}
                   {tab === "billing" && <Billing ledger={ledger} onPurchase={purchase} />}
                 </div>
@@ -513,16 +513,21 @@ function Scores({ report }: { report?: Report }) {
   );
 }
 
-function Sections({ report, filter }: { report?: Report; filter: string }) {
+function Sections({ report, categories }: { report?: Report; categories: NonNullable<ReportSection["category"]>[] }) {
+  const { sourceKindLabel } = useLanguage();
+
   if (!report) return <EmptyReport />;
-  const sections = report.sections.filter((section) => section.title.includes(filter) || (filter === "Market" && section.title.includes("Competitive")) || (filter === "Roadmap" && section.title.includes("Risk")));
+  const sections = report.sections.filter((section) => section.category && categories.includes(section.category));
   return (
     <div className="grid gap-4">
       {sections.map((section) => (
         <div key={section.id} className="panel p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-black">{section.title}</h2>
-            <span className="chip">{section.tag}</span>
+            <div>
+              {section.expert ? <p className="text-xs font-black uppercase text-moss">{section.expert}</p> : null}
+              <h2 className="mt-1 text-xl font-black">{section.title}</h2>
+            </div>
+            <span className="chip">{sourceKindLabel(section.tag)}</span>
           </div>
           <p className="mt-3 leading-7 text-ink/70">{section.summary}</p>
           <ul className="mt-4 grid gap-2 text-sm text-ink/70">
@@ -538,7 +543,7 @@ function Sections({ report, filter }: { report?: Report; filter: string }) {
   );
 }
 
-function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modules: GeneratableModule[]; report?: Report; filter: string }) {
+function ModuleAndSections({ idea, modules, report, categories }: { idea: Idea; modules: GeneratableModule[]; report?: Report; categories: NonNullable<ReportSection["category"]>[] }) {
   const { moduleLabel, statusLabel, t } = useLanguage();
 
   return (
@@ -582,7 +587,7 @@ function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modu
           </article>
         );
       })}
-      <Sections report={report} filter={filter} />
+      <Sections report={report} categories={categories} />
     </div>
   );
 }

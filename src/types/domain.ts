@@ -68,6 +68,8 @@ export type Source = {
 
 export type ReportSection = {
   id: string;
+  category?: "summary" | "market" | "competition" | "financials" | "roadmap" | "risk" | "evidence" | "gtm";
+  expert?: string;
   title: string;
   summary: string;
   bullets: string[];
@@ -171,10 +173,10 @@ export const moduleCosts: Record<ModuleKey, number> = {
 };
 
 export const moduleLabels: Record<ModuleKey, string> = {
-  validation: "Idea Validation",
-  market: "Market Analysis",
-  businessPlan: "Business Plan",
-  brand: "Brand Strategy",
-  visual: "Visual Identity",
-  marketing: "Marketing Suite"
+  validation: "Fikir Doğrulama",
+  market: "Pazar Analizi",
+  businessPlan: "İş Planı",
+  brand: "Marka Stratejisi",
+  visual: "Görsel Kimlik",
+  marketing: "Pazarlama Paketi"
 };

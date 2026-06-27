@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const email = body.email.toLowerCase();
   const db = await readDb();
   if (db.users.some((user) => user.email === email)) {
-    return NextResponse.json({ error: "Bu e-posta zaten kayitli." }, { status: 409 });
+    return NextResponse.json({ error: "Bu e-posta zaten kayıtlı." }, { status: 409 });
   }
   const user = {
     id: uid("user"),
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     createdAt: nowIso()
   } satisfies User;
   db.users.push(user);
-  addCredits(db, user.id, 100, "Signup bonus");
+  addCredits(db, user.id, 1000, "Kayıt bonusu");
   await writeDb(db);
   await setSession(user.id);
   return NextResponse.json({ user: publicUser(user) });

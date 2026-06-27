@@ -39,6 +39,10 @@ type PaymentRecord = {
   createdAt: string;
 };
 
+function roleLabel(role: "user" | "admin") {
+  return role === "admin" ? "Yönetici" : "Kullanıcı";
+}
+
 type AdminOverview = {
   stats: {
     users: number;
@@ -195,7 +199,7 @@ export default function AdminPage() {
                       <div className="font-black">{user.name}</div>
                       <div className="mt-0.5 text-xs text-ink/55">{user.email}</div>
                     </div>
-                    <span className={`chip ${user.role === "admin" ? "bg-citrus/50" : ""}`}>{user.role}</span>
+                    <span className={`chip ${user.role === "admin" ? "bg-citrus/50" : ""}`}>{roleLabel(user.role)}</span>
                   </div>
                   <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-ink/60">
                     <span>{user.credits} kredi</span>
@@ -218,7 +222,7 @@ export default function AdminPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className="chip bg-citrus/50">{selectedUser.credits} kredi</span>
-                    <span className="chip">{selectedUser.role}</span>
+                    <span className="chip">{roleLabel(selectedUser.role)}</span>
                   </div>
                 </div>
 
@@ -334,4 +338,3 @@ function PaymentTable({ rows }: { rows: PaymentRecord[] }) {
     </div>
   );
 }
-

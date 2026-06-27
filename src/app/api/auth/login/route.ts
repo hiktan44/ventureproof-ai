@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const db = await readDb();
   const user = db.users.find((entry) => entry.email === body.email.toLowerCase());
   if (!user || user.passwordHash !== hashPassword(body.password)) {
-    return NextResponse.json({ error: "E-posta veya sifre hatali." }, { status: 401 });
+    return NextResponse.json({ error: "E-posta veya şifre hatalı." }, { status: 401 });
   }
   await setSession(user.id);
   return NextResponse.json({ user: publicUser(user) });

@@ -2,15 +2,59 @@ import type { Experiment, Idea, IdeaContext, ModuleKey, ModuleOutput, Report, Re
 import { clampScore, nowIso, uid } from "@/lib/utils";
 
 const defaultContext: IdeaContext = {
-  geography: "Turkey + EU",
+  geography: "Türkiye + AB",
   industry: "SaaS",
-  customerSegment: "Early-stage teams",
+  customerSegment: "erken aşama operatörler",
   model: "B2B",
   stage: "idea",
-  founderSkills: "product, sales, no-code",
-  budget: "under EUR 5k",
+  founderSkills: "ürün, satış, no-code",
+  budget: "5 bin EUR altı",
   riskTolerance: "medium",
   language: "tr"
+};
+
+type ExpertAgent = {
+  name: string;
+  role: string;
+  method: string;
+};
+
+const expertAgents: Record<string, ExpertAgent> = {
+  discovery: {
+    name: "Müşteri Keşfi Uzmanı",
+    role: "Problem şiddeti, ICP netliği ve ödeme isteğini değerlendirir.",
+    method: "JTBD görüşmesi, problem frekansı, mevcut alternatif analizi, pre-sale sinyali"
+  },
+  market: {
+    name: "Pazar Araştırması Uzmanı",
+    role: "TAM/SAM/SOM, kanal talebi, yerel pazar dinamikleri ve büyüme sinyallerini okur.",
+    method: "Kategori trendleri, rakip yoğunluğu, arama niyeti, satın alma bütçesi, segment daraltma"
+  },
+  competition: {
+    name: "Rekabet ve Konumlandırma Uzmanı",
+    role: "Rakip kümeleri, wedge, farklılaşma ve switching maliyetini analiz eder.",
+    method: "Alternatif haritası, wedge testi, kategori cümlesi, itiraz matrisi"
+  },
+  finance: {
+    name: "Birim Ekonomi ve Finans Uzmanı",
+    role: "Fiyatlandırma, CAC, LTV, brüt marj, break-even ve runway varsayımlarını kurar.",
+    method: "Varsayım tablosu, senaryo aralığı, duyarlılık analizi, nakit riski"
+  },
+  risk: {
+    name: "Risk, Hukuk ve Güven Uzmanı",
+    role: "Regülasyon, veri güveni, operasyonel bağımlılık ve kanıt boşluklarını çıkarır.",
+    method: "Risk matrisi, guardrail, veri güvenliği, uyum ve itibar riski"
+  },
+  gtm: {
+    name: "GTM ve Büyüme Uzmanı",
+    role: "İlk kanal, teklif, mesajlaşma, satış hareketi ve lansman planını tasarlar.",
+    method: "Kanal/mesaj eşleşmesi, fiyat testi, concierge MVP, topluluk ve outbound deneyi"
+  },
+  experiment: {
+    name: "Deney Tasarım Uzmanı",
+    role: "Varsayımları ölçülebilir deneylere, eşiklere ve karar kurallarına dönüştürür.",
+    method: "Riski yüksek varsayım önceliklendirme, başarı eşiği, maliyet/süre planı"
+  }
 };
 
 export function normalizeContext(input: Partial<IdeaContext>): IdeaContext {
@@ -30,7 +74,7 @@ export function normalizeContext(input: Partial<IdeaContext>): IdeaContext {
 export function titleFromDescription(description: string) {
   const cleaned = description.trim().replace(/\s+/g, " ");
   const firstSentence = cleaned.split(/[.!?]/)[0] || cleaned;
-  return firstSentence.length > 54 ? `${firstSentence.slice(0, 51)}...` : firstSentence || "Untitled idea";
+  return firstSentence.length > 54 ? `${firstSentence.slice(0, 51)}...` : firstSentence || "İsimsiz fikir";
 }
 
 function scoreSeed(description: string) {
@@ -39,17 +83,18 @@ function scoreSeed(description: string) {
 
 function buildScores(description: string, context: IdeaContext): Scores {
   const seed = scoreSeed(description);
-  const stageBoost = context.stage === "revenue" ? 9 : context.stage === "mvp" ? 6 : context.stage === "scaling" ? 11 : 0;
-  const b2bBoost = context.model === "B2B" ? 6 : context.model === "B2B2C" ? 3 : 0;
-  const demand = clampScore(58 + (seed % 18) + stageBoost);
-  const feasibility = clampScore(62 + ((seed / 3) % 15) + b2bBoost);
-  const competition = clampScore(48 + ((seed / 7) % 22));
-  const monetization = clampScore(55 + ((seed / 11) % 23) + b2bBoost);
-  const founderFit = clampScore(60 + (context.founderSkills.length % 18));
-  const risk = clampScore(42 + ((seed / 13) % 26) - (context.riskTolerance === "high" ? 4 : 0));
+  const stageBoost = context.stage === "revenue" ? 10 : context.stage === "mvp" ? 7 : context.stage === "scaling" ? 12 : 0;
+  const b2bBoost = context.model === "B2B" ? 7 : context.model === "B2B2C" ? 4 : 0;
+  const specificityBoost = Math.min(12, Math.floor(description.length / 90));
+  const demand = clampScore(52 + (seed % 20) + stageBoost + specificityBoost);
+  const feasibility = clampScore(56 + ((seed / 3) % 17) + b2bBoost + (context.founderSkills.length % 8));
+  const competition = clampScore(46 + ((seed / 7) % 28));
+  const monetization = clampScore(50 + ((seed / 11) % 24) + b2bBoost + (context.stage === "revenue" ? 8 : 0));
+  const founderFit = clampScore(55 + (context.founderSkills.length % 24));
+  const risk = clampScore(38 + ((seed / 13) % 32) + (context.riskTolerance === "low" ? 8 : context.riskTolerance === "high" ? -5 : 0));
   return {
     viability: clampScore((demand + feasibility + monetization + founderFit + (100 - competition) + (100 - risk)) / 6),
-    confidence: clampScore(68 + description.length / 16 + (context.geography ? 5 : 0)),
+    confidence: clampScore(48 + specificityBoost * 3 + (context.customerSegment.length > 14 ? 9 : 0) + (context.geography ? 6 : 0)),
     demand,
     feasibility,
     competition,
@@ -64,39 +109,48 @@ function buildSources(context: IdeaContext): Source[] {
   return [
     {
       id: uid("src"),
-      title: `${context.geography} search intent and category trend sample`,
+      title: `${context.geography} için arama niyeti, kategori trendi ve talep sinyali taraması`,
       url: "https://trends.google.com",
       kind: "verified",
-      confidence: 82,
+      confidence: 78,
       refreshedAt
     },
     {
       id: uid("src"),
-      title: `${context.industry} competitor and review landscape sample`,
+      title: `${context.industry} rakipleri, yorumları, fiyat sayfaları ve alternatif çözüm haritası`,
       url: "https://www.producthunt.com",
       kind: "verified",
-      confidence: 76,
+      confidence: 74,
       refreshedAt
     },
     {
       id: uid("src"),
-      title: "Founder-provided positioning, budget and capability inputs",
+      title: "Kurucu girdileri: hedef segment, bütçe, coğrafya, aşama ve yetkinlikler",
       kind: "user",
-      confidence: 71,
+      confidence: 72,
       refreshedAt
     },
     {
       id: uid("src"),
-      title: "Model inference from market structure, pricing and execution risk",
+      title: "Uzman ajan çıkarımı: pazar yapısı, fiyatlama, risk ve uygulanabilirlik varsayımları",
       kind: "inference",
-      confidence: 69,
+      confidence: 66,
       refreshedAt
     }
   ];
 }
 
-function section(id: string, title: string, summary: string, bullets: string[], sourceIds: string[], tag: ReportSection["tag"]): ReportSection {
-  return { id, title, summary, bullets, sourceIds, tag };
+function section(input: Omit<ReportSection, "id">): ReportSection {
+  return { id: uid("sec"), ...input };
+}
+
+function assumptionTable(context: IdeaContext) {
+  return [
+    `ICP varsayımı: İlk kazanılabilir müşteri ${context.customerSegment}; geniş pazar değil, tekrar eden ve bütçesi olan dar segment hedeflenmeli.`,
+    `Satın alma tetikleyicisi: Problem aylık/haftalık tekrar etmiyorsa ${context.model} modelinde satış döngüsü uzar.`,
+    `Bütçe varsayımı: ${context.budget} bütçe ile önce yazılım değil, kanıt toplayan concierge/smoke test kurulmalı.`,
+    `Coğrafya varsayımı: ${context.geography} içinde fiyat hassasiyeti, regülasyon ve kanal güveni ayrı ayrı doğrulanmalı.`
+  ];
 }
 
 export function generateValidationReport(idea: Pick<Idea, "id" | "description" | "context" | "reports">): Report {
@@ -106,72 +160,118 @@ export function generateValidationReport(idea: Pick<Idea, "id" | "description" |
   const userSource = sources.find((source) => source.kind === "user")?.id ?? sources[0].id;
   const inference = sources.find((source) => source.kind === "inference")?.id ?? sources[0].id;
   const version = idea.reports.length + 1;
+  const title = titleFromDescription(idea.description);
 
   const executiveSummary =
-    `${idea.description.trim()} fikri ${idea.context.geography} pazarinda ${scores.viability}/100 viability skoru aliyor. ` +
-    `En guclu taraf ${scores.demand >= scores.feasibility ? "talep sinyali" : "uygulanabilirlik"}; en dikkat isteyen alan rekabet ve kanit toplama disiplini.`;
+    `${title} fikri için uzman ajan kurulu toplam değerlendirmesi ${scores.viability}/100 yaşayabilirlik ve ${scores.confidence}/100 güven skoru veriyor. ` +
+    `Karar: fikir doğrudan ürün geliştirmeye değil, önce problem şiddeti, ödeme isteği ve rekabetten ayrışma kanıtına götürülmeli. ` +
+    `En kritik bilinmez ${scores.demand >= scores.monetization ? "ödeme isteğinin gerçek müşteri davranışıyla kanıtlanması" : "talebin yeterince sık ve bütçeli olup olmadığı"}.`;
 
   const sections: ReportSection[] = [
-    section(
-      uid("sec"),
-      "Validation Summary",
-      "Karar dosyasi fikrin talep, rekabet, uygulanabilirlik ve founder-fit tarafini birlikte okur.",
-      [
-        `Viability ${scores.viability}/100, confidence ${scores.confidence}/100.`,
-        `${idea.context.customerSegment} icin ilk wedge netlestirilmeli.`,
-        `${idea.context.budget} butce ile en dogru baslangic dusuk maliyetli talep testi.`
+    section({
+      category: "summary",
+      expert: expertAgents.discovery.name,
+      title: "Uzman Kurul Kararı ve Kanıt Seviyesi",
+      summary: "Bu bölüm fikri tek bir skorla geçmek yerine, hangi varsayımların kanıtlandığını ve hangilerinin hâlâ risk olduğunu ayırır.",
+      bullets: [
+        `Karar önerisi: ${scores.viability >= 72 ? "kontrollü MVP'ye geçilebilir, fakat satış kanıtı şart" : scores.viability >= 58 ? "önce 2 haftalık kanıt sprinti yapılmalı" : "ürün geliştirmeden önce problem/segment yeniden daraltılmalı"}.`,
+        `Güven skoru ${scores.confidence}/100; bu skor gerçek müşteri görüşmesi, ödeme niyeti ve canlı trafik verisi gelmeden yatırımcı seviyesi sayılmaz.`,
+        ...assumptionTable(idea.context),
+        `İlk karar eşiği: 20 hedef müşteri görüşmesinde en az 12 kişi problemi acil görmeli ve en az 3 kişi ücretli pilot/pre-order kabul etmeli.`
       ],
-      [userSource, inference],
-      "inference"
-    ),
-    section(
-      uid("sec"),
-      "Market & Demand Signals",
-      "Pazar sinyalleri pozitif ama iddialar gercek musteri davranisi ile dogrulanmali.",
-      [
-        `${idea.context.industry} kategorisinde alternatif arayisi ve arac yorgunlugu mesajlasma acisi yaratir.`,
-        `${idea.context.geography} icin lokal kanal ve fiyat hassasiyeti raporda ayrica takip edilmeli.`,
-        "Ilk 20 discovery gorusmesi rapor confidence skorunu anlamli sekilde artirir."
+      sourceIds: [userSource, inference],
+      tag: "inference"
+    }),
+    section({
+      category: "market",
+      expert: expertAgents.market.name,
+      title: "Pazar Talebi, ICP ve TAM/SAM/SOM Okuması",
+      summary: `${idea.context.geography} içinde ${idea.context.industry} pazarı geniş anlatılmamalı; ilk kazanılabilir pazar ${idea.context.customerSegment} üzerinden hesaplanmalı.`,
+      bullets: [
+        `TAM anlatısı yatırımcı sunumu için yeterli değildir; ilk raporda SAM, ${idea.context.customerSegment} sayısı, yıllık bütçe ve problem frekansı ile kurulmalı.`,
+        `SOM için ilk 90 gün hedefi: 30-50 nitelikli görüşme, 100-300 landing ziyaretçisi, 5-10 ciddi lead ve 1-3 ücretli pilot.`,
+        `Talep sinyali puanı ${scores.demand}/100; bu olumluysa bile gerçek kanıt sayılacak metrikler: bekleme listesi dönüşümü, toplantı kabul oranı ve ödeme niyeti.`,
+        `Pazar kanalı hipotezi: ${idea.context.model} modelinde LinkedIn/outbound, niş topluluklar, partner kanalı ve içerik SEO ayrı ayrı küçük bütçeyle test edilmeli.`,
+        `Yanlış pozitif riski: İnsanların “iyi fikir” demesi satış kanıtı değildir; takvim açmaları, veri paylaşmaları veya ücretli pilotu kabul etmeleri gerekir.`
       ],
-      verified,
-      "verified"
-    ),
-    section(
-      uid("sec"),
-      "Competitive Landscape",
-      "Rakip yogunlugu tek basina stop sinyali degil; pozisyonlama acikliginin kanitlanmasi gerekir.",
-      [
-        "Horizontal rakiplerle kafa kafaya girilmemeli.",
-        `${idea.context.customerSegment} icin dar bir operasyonel problem secilmeli.`,
-        "Fiyat, onboarding hizi ve guven kaniti erken farklastirici olabilir."
+      sourceIds: verified,
+      tag: "verified"
+    }),
+    section({
+      category: "competition",
+      expert: expertAgents.competition.name,
+      title: "Rekabet Haritası, Wedge ve Konumlandırma",
+      summary: "Rakip yoğunluğu tek başına kötü sinyal değildir; ancak wedge net değilse CAC yükselir ve ürün commodity algılanır.",
+      bullets: [
+        `Rakip kümeleri üçe ayrılmalı: doğrudan yazılım rakipleri, yatay araçlar ve müşterinin bugün kullandığı manuel/Excel/ajans alternatifi.`,
+        `Farklılaşma cümlesi şu yapıda olmalı: “${idea.context.customerSegment} için [tek acı] problemini [ölçülebilir sonuç] ile çözen [kategori].”`,
+        `Switching riski: müşteri mevcut alternatiften ayrılmak için onboarding süresi, veri taşıma, güven ve ROI kanıtı ister.`,
+        `İlk wedge önerisi: tüm pazara değil, tek persona + tek iş akışı + tek ölçülebilir çıktı kombinasyonuna gir.`,
+        `Stop sinyali: 10 görüşmede müşteriler aynı acıyı tekrar etmiyor veya mevcut alternatiften ayrılma nedeni söyleyemiyorsa fikir yeniden konumlandırılmalı.`
       ],
-      verified,
-      "verified"
-    ),
-    section(
-      uid("sec"),
-      "Financials & Unit Economics",
-      "Finansal model ilk asamada varsayim odaklidir; CAC, conversion ve churn araliklari ile simulasyon yapilmali.",
-      [
-        "Baslangic ARPA varsayimi dusuk, expansion varsayimi ayrica test edilmeli.",
-        "Break-even icin ilk 90 gunde kanal basina CAC ogrenimi hedeflenmeli.",
-        "Yuksek gross margin ancak destek maliyeti kontrol edilirse korunur."
+      sourceIds: verified,
+      tag: "verified"
+    }),
+    section({
+      category: "financials",
+      expert: expertAgents.finance.name,
+      title: "Birim Ekonomi, Fiyatlama ve Runway Senaryosu",
+      summary: "Finansal bölüm tek bir tahmin değil, hangi varsayımın işi öldürebileceğini gösteren senaryo aralığı olmalı.",
+      bullets: [
+        `Başlangıç fiyat testi: 3 paket öner; düşük paket öğrenme, orta paket ana teklif, yüksek paket concierge/pilot hizmeti içersin.`,
+        `CAC disiplini: ilk 90 gün kanal başına toplantı maliyeti, demo dönüşümü ve pilot kapanış oranı ölçülmeden paid growth ölçeklenmemeli.`,
+        `Break-even mantığı: ARPA, brüt marj ve destek maliyeti birlikte okunmalı; yüksek destek ihtiyacı SaaS marjını hızlı eritir.`,
+        `Runway planı: ${idea.context.budget} bütçe ile önce 2 haftalık concierge MVP + landing + görüşme sprinti; kod geliştirme sadece ödeme kanıtından sonra.`,
+        `Yatırımcı dili: “pazar büyük” yerine “şu segmentte şu bütçeye sahip şu kadar müşteri, şu kanalla şu maliyete ulaşılabilir” cümlesi kurulmalı.`
       ],
-      [inference],
-      "inference"
-    ),
-    section(
-      uid("sec"),
-      "Roadmap, Risk & Execution",
-      "MVP, tek persona ve tek use-case uzerinden kanit toplamalidir.",
-      [
-        "Hafta 1: landing + waitlist + 15 interview.",
-        "Hafta 2: concierge MVP ve fiyat testi.",
-        "Hafta 3-4: ilk odemeli pilot, risk log'u ve karar toplantisi."
+      sourceIds: [inference],
+      tag: "inference"
+    }),
+    section({
+      category: "risk",
+      expert: expertAgents.risk.name,
+      title: "Risk, Regülasyon, Veri Güveni ve Operasyonel Bağımlılıklar",
+      summary: "Risk analizi sadece tehdit listesi değil; hangi guardrail kurulursa fikrin test edilebilir kalacağını söyler.",
+      bullets: [
+        `Veri güveni: müşteri verisi, finansal veri veya kişisel veri işleniyorsa ilk MVP'de minimum veri, açık izin ve silme akışı tanımlanmalı.`,
+        `Regülasyon: ${idea.context.geography} için KVKK/GDPR, ödeme, sektör lisansı veya veri saklama zorunluluğu ayrı kontrol listesi olmalı.`,
+        `Operasyonel risk: çözüm çok fazla manuel destek gerektiriyorsa “ürün” değil hizmet ajansı gibi ölçeklenir.`,
+        `Model riski: AI çıktıları doğruluk iddiası değil karar destek iddiası taşımalı; kaynak, varsayım ve güven etiketi görünür olmalı.`,
+        `Kritik guardrail: Kanıt eklenmeden deney “doğrulandı” statüsüne alınmamalı; mevcut uygulamadaki PRD guardrail doğru yönde.`
       ],
-      [userSource, inference],
-      "inference"
-    )
+      sourceIds: [userSource, inference],
+      tag: "inference"
+    }),
+    section({
+      category: "gtm",
+      expert: expertAgents.gtm.name,
+      title: "GTM, Lansman Mesajı ve İlk Satış Hareketi",
+      summary: "GTM planı genel pazarlama listesi değil, ilk müşteriyle konuşmayı başlatacak teklif ve kanal deneyleri olmalı.",
+      bullets: [
+        `Ana teklif: “30 dakikada demo” değil, ${idea.context.customerSegment} için ölçülebilir bir sonuç vaadiyle kurulmalı.`,
+        `İlk kanal: 20 kişilik hedef liste + kişisel outbound + 1 landing + 1 topluluk paylaşımı; paid ads ikinci sprintte test edilmeli.`,
+        `Mesajlaşma sırası: problem acısı, mevcut alternatifin eksikliği, ölçülebilir çıktı, düşük riskli pilot teklifi.`,
+        `Lansman varlıkları: landing sayfası, 5 e-posta follow-up, 3 LinkedIn postu, 2 müşteri görüşme scripti ve pilot teklif dokümanı.`,
+        `Başarı eşiği: 2 hafta içinde 5 nitelikli görüşme altı kalırsa kanal/mesaj; 15 görüşme üstü ama ödeme yoksa teklif/fiyat revize edilmeli.`
+      ],
+      sourceIds: [inference],
+      tag: "inference"
+    }),
+    section({
+      category: "roadmap",
+      expert: expertAgents.experiment.name,
+      title: "30 Günlük Kanıt Sprinti ve Karar Kuralları",
+      summary: "Roadmap ürün özellik listesi değil, her hafta hangi kanıtın toplanacağını ve hangi kararla devam edileceğini belirler.",
+      bullets: [
+        "Hafta 1: ICP listesi, 20 görüşme daveti, problem şiddeti scripti, tek cümle değer önerisi.",
+        "Hafta 2: Smoke-test landing, iki değer önerisi A/B testi, fiyat paketi konuşmaları.",
+        "Hafta 3: Concierge MVP veya manuel pilot; gerçek müşteri verisiyle ölçülebilir değer üretme.",
+        "Hafta 4: Karar toplantısı; go/pivot/stop kararı, risk defteri, yatırımcı memo ve MVP kapsamı.",
+        "Go kararı için minimum eşik: 12 acil problem teyidi, 5 ciddi lead, 3 fiyat kabulü, 1-2 ücretli pilot veya yazılı niyet."
+      ],
+      sourceIds: [userSource, inference],
+      tag: "inference"
+    })
   ];
 
   return {
@@ -182,21 +282,23 @@ export function generateValidationReport(idea: Pick<Idea, "id" | "description" |
     scores,
     executiveSummary,
     goSignals: [
-      `Net bir ${idea.context.customerSegment} segmenti secilmis.`,
-      `${idea.context.model} modelinde monetizasyon daha erken test edilebilir.`,
-      "Founder-fit skoru ilk MVP icin yeterli gorunuyor."
+      `${idea.context.customerSegment} netleştirilebilirse ilk wedge kurulabilir.`,
+      `${idea.context.model} modelinde ödeme isteği erken ve doğrudan test edilebilir.`,
+      `Kurucu yetkinlikleri (${idea.context.founderSkills}) ilk concierge MVP için yeterli başlangıç sinyali veriyor.`,
+      "Ürün geliştirmeden önce düşük maliyetli kanıt sprinti yapılabilir."
     ],
     stopSignals: [
-      "Kanit olmadan pazar buyuklugu iddiasi yatirimci sunumunda zayif kalir.",
-      "Rakip yogunlugu positioning net degilse CAC'i yukseltebilir.",
-      "Regulasyon veya veri guveni ihtiyaci erken cozume dahil edilmeli."
+      "Müşteriler problemi acil görmüyor veya mevcut alternatiften ayrılma nedeni söyleyemiyorsa stop/pivot gerekir.",
+      "Ücretli pilot/pre-order çıkmadan tam ürün geliştirmek sermaye ve zaman riskini büyütür.",
+      "Regülasyon, veri güveni veya entegrasyon ihtiyacı ilk MVP kapsamına sığmıyorsa wedge daraltılmalı.",
+      "Rakiplerden ayrışan kategori cümlesi yazılamıyorsa pazarlama maliyeti artar."
     ],
     nextActions: [
-      "20 hedef musteri gorusmesi planla.",
-      "Tek problem icin smoke-test landing yayinla.",
-      "3 fiyat paketi ile willingness-to-pay testi yap.",
-      "Rakiplerden farkli bir kategori cumlesi yaz.",
-      "Ilk MVP scope'unu 2 haftalik concierge deneyine indir."
+      "20 hedef müşteri için görüşme listesi oluştur ve problem şiddeti scriptiyle görüşmeleri başlat.",
+      "Tek problem/tek persona için smoke-test landing yayınla; CTA olarak demo değil, pilot/erken erişim talebi kullan.",
+      "3 fiyat paketiyle ödeme isteği testi yap; sözlü beğeni değil takvim, e-posta, LOI veya ödeme sinyali topla.",
+      "Rakip haritasını manuel alternatifler dahil çıkar ve tek cümle konumlandırma yaz.",
+      "2 haftalık concierge MVP kapsamı yaz; kodlanacak özellikleri değil kanıtlanacak varsayımları listele."
     ],
     sources,
     sections
@@ -209,14 +311,14 @@ export function generateExperiments(ideaId: string): Experiment[] {
     {
       id: uid("exp"),
       ideaId,
-      title: "Problem intensity interviews",
+      title: "Problem şiddeti görüşmeleri",
       riskLevel: "high",
-      evidenceRequired: "At least 12 of 20 target users describe the problem as urgent.",
-      suggestedExperiment: "Run structured 30-minute discovery calls with ICP candidates.",
+      evidenceRequired: "20 hedef müşterinin en az 12'si problemi acil, sık ve bütçeli olarak tarif etmeli.",
+      suggestedExperiment: "ICP adaylarıyla 30 dakikalık yapılandırılmış görüşme yap; mevcut çözüm, frekans, maliyet ve son deneme tarihini sor.",
       cost: "EUR 0-150",
-      duration: "5 days",
-      successThreshold: "60% urgent-pain confirmation",
-      owner: "Founder",
+      duration: "5 gün",
+      successThreshold: "60%+ acil problem teyidi",
+      owner: "Müşteri Keşfi Uzmanı",
       status: "to_validate",
       evidence: [],
       createdAt
@@ -224,14 +326,14 @@ export function generateExperiments(ideaId: string): Experiment[] {
     {
       id: uid("exp"),
       ideaId,
-      title: "Smoke-test landing conversion",
+      title: "Smoke-test landing dönüşümü",
       riskLevel: "medium",
-      evidenceRequired: "Visitor to waitlist conversion rate with a clear offer.",
-      suggestedExperiment: "Launch one-page landing with two value propositions and track CTA clicks.",
+      evidenceRequired: "Net teklifli landing sayfasında ziyaretçi -> nitelikli lead dönüşüm oranı ölçülmeli.",
+      suggestedExperiment: "Tek sayfalık landing yayınla; iki değer önerisi, net pilot CTA'sı ve kaynak/varsayım etiketi kullan.",
       cost: "EUR 50-250",
-      duration: "7 days",
-      successThreshold: "8%+ waitlist conversion",
-      owner: "Growth",
+      duration: "7 gün",
+      successThreshold: "8%+ lead dönüşümü veya 5+ nitelikli görüşme talebi",
+      owner: "GTM Uzmanı",
       status: "to_validate",
       evidence: [],
       createdAt
@@ -239,14 +341,14 @@ export function generateExperiments(ideaId: string): Experiment[] {
     {
       id: uid("exp"),
       ideaId,
-      title: "Willingness-to-pay test",
+      title: "Ödeme isteği ve pilot paketi testi",
       riskLevel: "high",
-      evidenceRequired: "Prospects accept a paid pilot or pre-order.",
-      suggestedExperiment: "Offer 3 pilot packages after interviews.",
+      evidenceRequired: "Aday müşteriler ücretli pilot, ön ödeme, LOI veya yazılı bütçe sinyali vermeli.",
+      suggestedExperiment: "Görüşmelerden sonra 3 pilot paketi sun; indirimli bedava kullanım yerine ücretli öğrenme teklifi yap.",
       cost: "EUR 0",
-      duration: "10 days",
-      successThreshold: "3 paid commitments",
-      owner: "Founder",
+      duration: "10 gün",
+      successThreshold: "3 fiyat kabulü veya 1-2 ücretli pilot",
+      owner: "Finans Uzmanı",
       status: "to_validate",
       evidence: [],
       createdAt
@@ -254,14 +356,14 @@ export function generateExperiments(ideaId: string): Experiment[] {
     {
       id: uid("exp"),
       ideaId,
-      title: "Competitive switching proof",
+      title: "Rekabetten geçiş kanıtı",
       riskLevel: "medium",
-      evidenceRequired: "Users explain why current alternatives fail.",
-      suggestedExperiment: "Collect 25 competitor review snippets and 10 switcher interviews.",
+      evidenceRequired: "Kullanıcılar mevcut alternatifin neden yetmediğini ve hangi şartta geçiş yapacağını açıklamalı.",
+      suggestedExperiment: "25 rakip yorumu, 10 switcher görüşmesi ve manuel alternatif analiziyle tekrar eden karşılanmamış ihtiyacı çıkar.",
       cost: "EUR 0-100",
-      duration: "4 days",
-      successThreshold: "3 repeated unmet needs",
-      owner: "Research",
+      duration: "4 gün",
+      successThreshold: "3 tekrar eden unmet need ve 1 net wedge",
+      owner: "Rekabet Uzmanı",
       status: "to_validate",
       evidence: [],
       createdAt
@@ -269,14 +371,14 @@ export function generateExperiments(ideaId: string): Experiment[] {
     {
       id: uid("exp"),
       ideaId,
-      title: "Concierge MVP delivery",
+      title: "Concierge MVP değer teslimi",
       riskLevel: "high",
-      evidenceRequired: "Manual service produces measurable customer value.",
-      suggestedExperiment: "Deliver the solution manually for 2 pilot customers before building software.",
+      evidenceRequired: "Manuel teslim edilen çözüm müşteride ölçülebilir değer üretmeli.",
+      suggestedExperiment: "Yazılım geliştirmeden önce çözümü 2 pilot müşteriye manuel/yarı otomatik teslim et ve sonuç metriğini takip et.",
       cost: "EUR 100-500",
-      duration: "14 days",
-      successThreshold: "2 pilots complete and 1 renewal intent",
-      owner: "Product",
+      duration: "14 gün",
+      successThreshold: "2 pilot tamamlandı, 1 yenileme/ödeme niyeti",
+      owner: "Ürün Uzmanı",
       status: "to_validate",
       evidence: [],
       createdAt
@@ -293,103 +395,113 @@ export function createModuleOutput(module: Exclude<ModuleKey, "validation">, ide
     module,
     generatedAt: nowIso()
   };
+
   if (module === "market") {
     return {
       ...common,
-      title: "Market Analysis",
-      summary: `${idea.context.geography} icin ${idea.context.industry} pazari once dar bir ICP ve dusuk maliyetli talep kanitlariyla okunmali.`,
+      title: "Uzman Pazar Analizi",
+      summary: `${idea.context.geography} içinde ${idea.context.industry} pazarı önce dar ICP, bütçe sinyali ve tekrar eden problem frekansı üzerinden okunmalı.`,
       bullets: [
-        "TAM/SAM/SOM ranges: broad TAM yerine ilk kazanilabilir niche pazar hesaplanir.",
-        "Demand channels: search intent, founder communities, review pain points and local partnerships.",
-        "Competitor map: horizontal incumbents, vertical niche tools and manual service alternatives.",
-        "Pricing benchmarks: pilot fee, monthly SaaS and success-based pricing variants."
+        `ICP: ${idea.context.customerSegment}; ilk sprintte persona daha da daraltılmalı ve satın alma yetkisi olan alt segment seçilmeli.`,
+        "TAM/SAM/SOM: geniş pazar büyüklüğü değil, ilk 90 günde ulaşılabilir müşteri havuzu ve kanal başına toplantı maliyeti hesaplanmalı.",
+        "Talep kanıtı: arama niyeti, rakip yorumları, görüşme kabul oranı, landing dönüşümü ve ödeme isteği birlikte okunmalı.",
+        "Pazar riski: çok geniş segment, düşük frekanslı problem ve bütçesi olmayan kullanıcı grubu yanlış pozitif üretir.",
+        "Haftalık güncelleme: rakip fiyat sayfaları, Product Hunt/G2 yorumları, LinkedIn post etkileşimi ve müşteri görüşmesi notları izlenmeli."
       ],
       artifacts: [
-        { label: "TAM range", value: "EUR 420M-1.2B directional" },
-        { label: "Initial SAM", value: `${idea.context.geography} ${idea.context.customerSegment}` },
-        { label: "Market stage", value: "Growing, crowded, wedge-sensitive" },
-        { label: "Refresh cadence", value: "Weekly monitoring ready" }
+        { label: "İlk SAM", value: `${idea.context.geography} / ${idea.context.customerSegment}` },
+        { label: "Talep kanıt eşiği", value: "20 görüşme, 5 ciddi lead, 3 fiyat kabulü" },
+        { label: "Kanal hipotezi", value: "Outbound + niş topluluk + partner deneyi" },
+        { label: "Raporu güncelleme", value: "Haftalık görüşme ve rakip sinyali takibi" }
       ],
       sourceIds
     };
   }
+
   if (module === "businessPlan") {
     return {
       ...common,
-      title: "Investor-Ready Business Plan",
-      summary: "Is plani rapordaki kanitlari yatirimci diline cevirir ve ilk MVP kapsamindan finansal varsayimlara kadar baglar.",
+      title: "Yatırımcı Seviyesi İş Planı",
+      summary: "İş planı; problem kanıtı, ilk müşteri profili, GTM hareketi, finansal varsayımlar ve karar kurallarını tek yatırımcı dosyasına çevirir.",
       bullets: [
-        "Executive summary: problem, solution, ICP, timing and traction plan.",
-        "GTM plan: interviews, concierge pilots, partner channel and paid test sequence.",
-        "36-month projection: conservative, base and aggressive revenue scenarios.",
-        "Funding ask: MVP, GTM learning and first hires for 12-month runway."
+        "Yönetici özeti: problem, ICP, çözüm, neden şimdi, kanıt seviyesi ve 30 günlük öğrenme planı.",
+        "GTM planı: 20 görüşme, 1 landing, 3 fiyat paketi, 2 pilot ve haftalık karar toplantısı.",
+        "Finansal model: conservative/base/aggressive senaryolar; ARPA, CAC, churn, brüt marj ve destek maliyeti ayrı satır olmalı.",
+        "Fon ihtiyacı: MVP kodu değil, müşteri öğrenimi, GTM deneyi ve ilk operasyonel kapasite için kalemlendirilmeli.",
+        "Yatırımcı risk notu: kanıtlanmamış varsayımlar, regülasyon/veri güveni, rakipten ayrışma ve satış döngüsü."
       ],
       artifacts: [
-        { label: "MVP meta-prompt", value: `Build a focused ${idea.context.industry} MVP for ${idea.context.customerSegment} in ${idea.context.geography}.` },
-        { label: "Funding ask", value: "EUR 250k-450k pre-seed range" },
-        { label: "Runway target", value: "12-15 months" },
-        { label: "Break-even path", value: "35-60 paying accounts, assumption-dependent" }
+        { label: "MVP meta-prompt", value: `${idea.context.customerSegment} için tek problemi çözen, kanıt odaklı ${idea.context.industry} MVP'si tasarla.` },
+        { label: "Pre-seed aralığı", value: "EUR 250k-450k, kanıt seviyesine bağlı" },
+        { label: "Runway hedefi", value: "12-15 ay" },
+        { label: "Break-even yolu", value: "35-60 ödeme yapan hesap, ARPA/CAC varsayımına bağlı" }
       ],
       sourceIds
     };
   }
+
   if (module === "brand") {
     return {
       ...common,
-      title: "Brand Strategy",
-      summary: "Marka stratejisi guven, hiz ve kanit odakli bir kategori cumlesi etrafinda kurulur.",
+      title: "Marka Stratejisi ve Konumlandırma",
+      summary: "Marka; abartılı AI iddiası yerine güven, kanıt, hız ve ölçülebilir sonuç etrafında kurulmalı.",
       bullets: [
-        "Positioning: evidence-backed operating system for a narrow founder/customer segment.",
-        "Archetype: Sage + Builder, with plain-language confidence.",
-        "Messaging pillars: measurable value, lower risk, faster launch, local context.",
-        "Objection handling: data trust, switching cost, integration effort and ROI proof."
+        `Konumlandırma: ${idea.context.customerSegment} için kanıtla doğrulanan karar destek sistemi.`,
+        "Arketip: Bilge + İnşa Eden; teknik ama sade, güven veren ve ölçülebilir konuşan ton.",
+        "Mesaj sütunları: riski azalt, daha hızlı öğren, yerel bağlamı anla, kaynaklı karar ver.",
+        "İtiraz yönetimi: veri güveni, switching maliyeti, entegrasyon eforu, ROI kanıtı ve destek ihtiyacı.",
+        "Yasaklı iddia: kaynak ve kanıt olmadan “kesin doğru”, “garanti başarı”, “tam otomatik karar” denmemeli."
       ],
       artifacts: [
-        { label: "Tagline", value: "Validate with evidence. Launch with confidence." },
-        { label: "Voice", value: "Clear, sharp, founder-to-founder" },
-        { label: "Hero headline", value: "Turn your idea into an evidence-backed launch plan." },
-        { label: "Brand risk", value: "Avoid unverifiable accuracy claims" }
+        { label: "Tagline", value: "Kanıtla doğrula. Güvenle başlat." },
+        { label: "Ses tonu", value: "Net, uzman, kurucudan kurucuya" },
+        { label: "Hero cümlesi", value: "Fikrini kaynaklı ve ölçülebilir lansman planına çevir." },
+        { label: "Marka riski", value: "Doğrulanmamış doğruluk/başarı iddialarından kaçın" }
       ],
       sourceIds
     };
   }
+
   if (module === "visual") {
     return {
       ...common,
-      title: "Visual Identity",
-      summary: "Gorsel kimlik sakin operasyonel guven ile canli karar enerjisini birlestirir.",
+      title: "Görsel Kimlik ve Ürün Dili",
+      summary: "Görsel kimlik sakin operasyonel güven ile canlı karar enerjisini birleştirmeli; dekoratif değil ürün odaklı olmalı.",
       bullets: [
-        "Logo prompts: simple mark combining proof, signal and forward motion.",
-        "Palette: ink, moss, citrus, coral and ocean accents.",
-        "Typography: high-legibility sans, compact dashboard weights.",
-        "Landing hero direction: product-first dashboard screenshot, not abstract decoration."
+        "Logo yönü: kanıt, sinyal ve ileri hareketi birleştiren sade işaret.",
+        "Palet: ink taban, moss/citrus güven ve karar enerjisi, coral risk uyarısı, ocean bilgi vurgusu.",
+        "Tipografi: dashboard için kompakt, yüksek okunurluk; pazarlama sayfalarında daha geniş nefes.",
+        "Hero yönü: soyut görsel yerine gerçek dashboard/report önizlemesi ve kaynaklı karar dosyası sinyali.",
+        "UI kuralı: kartlar sadece tekrarlı öğelerde; admin ve dashboard yoğun ama taranabilir kalmalı."
       ],
       artifacts: [
-        { label: "Primary color", value: "#15201b" },
-        { label: "Accent color", value: "#d8f171" },
-        { label: "UI mood", value: "Dense, calm, analytical" },
-        { label: "Export", value: "SVG/PNG/Figma placeholder ready" }
+        { label: "Ana renk", value: "#15201b" },
+        { label: "Aksan", value: "#d8f171" },
+        { label: "UI ruhu", value: "Yoğun, sakin, analitik" },
+        { label: "Asset çıktısı", value: "SVG/PNG/Figma yönlendirmesi hazır" }
       ],
       sourceIds
     };
   }
+
   return {
     ...common,
-    title: "Marketing Suite",
-    summary: "Marketing suite raporun en guclu hipotezlerini kanala ozel launch varliklarina cevirir.",
+    title: "Pazarlama ve Lansman Paketi",
+    summary: "Pazarlama paketi raporun en güçlü hipotezlerini kanala özel mesajlara, tekliflere ve lansman deneylerine dönüştürür.",
     bullets: [
-      "Meta ads: pain-first hooks, fast validation promise and proof-led CTA.",
-      "LinkedIn ads: founder/operator narrative with measurable outcome.",
-      "Email sequence: welcome, value, objection, proof and hard-offer.",
-      "UGC scripts: before/after founder workflow and decision-risk framing.",
-      "Launch checklist: Product Hunt, communities, founder calls and paid test budget."
+      "Meta/paid hook: problem acısı + hızlı kanıt + düşük riskli pilot CTA.",
+      "LinkedIn hook: kurucu/operatör diliyle ölçülebilir karar riski anlatısı.",
+      "E-posta sekansı: problem, değer, itiraz, kanıt, pilot teklif ve son takip.",
+      "UGC/script: önce/sonra kurucu iş akışı, yanlış ürün geliştirme maliyeti ve kanıtlı karar çerçevesi.",
+      "Lansman checklist: Product Hunt, niş topluluklar, kurucu görüşmeleri, partner kanalı ve küçük paid test bütçesi."
     ],
     artifacts: [
-      { label: "Meta hook", value: "Stop building before your market tells you yes." },
-      { label: "LinkedIn hook", value: "Your next startup decision should have sources, not vibes." },
-      { label: "Email subject", value: "Your idea report is ready. Here is the riskiest assumption." },
-      { label: "UTM plan", value: "utm_campaign=validation_mvp&utm_content={hypothesis}" }
+      { label: "Meta hook", value: "Pazar evet demeden ürün inşa etmeyi bırak." },
+      { label: "LinkedIn hook", value: "Sıradaki startup kararın hislerle değil kaynaklarla verilsin." },
+      { label: "E-posta konusu", value: "Fikir raporun hazır: en riskli varsayım burada." },
+      { label: "UTM planı", value: "utm_campaign=validation_mvp&utm_content={hypothesis}" }
     ],
     sourceIds
   };
 }
+
