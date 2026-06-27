@@ -36,12 +36,24 @@ npm run dev
 
 Open http://localhost:3000.
 
+Seed a demo account:
+
+```bash
+npm run seed
+```
+
+Demo login: `demo@ventureproof.ai` / `DemoPass!2026`
+
 ## Checks
 
 ```bash
 npm run typecheck
 npm run build
 ```
+
+## Deploy
+
+See `DEPLOYMENT.md` for Docker and Coolify notes.
 
 ## Environment keys to add later
 

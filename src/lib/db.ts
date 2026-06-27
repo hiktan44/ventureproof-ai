@@ -4,7 +4,8 @@ import path from "path";
 import type { CreditLedgerEntry, Database, Idea, User } from "@/types/domain";
 import { nowIso, uid } from "@/lib/utils";
 
-const dataFile = path.join(process.cwd(), ".data", "ventureproof.json");
+const dataDir = process.env.DATA_DIR || path.join(process.cwd(), ".data");
+const dataFile = path.join(dataDir, "ventureproof.json");
 const sessionCookie = "vp_session";
 
 const emptyDb: Database = {
