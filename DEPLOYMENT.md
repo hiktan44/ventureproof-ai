@@ -56,7 +56,7 @@ OPENAI_MODEL=gpt-5.2
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENROUTER_API_KEY=
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_MODEL=
+OPENROUTER_MODEL=z-ai/glm-5.2
 GLM_API_KEY=
 GLM_BASE_URL=https://api.z.ai/api/coding/paas/v4
 GLM_MODEL=glm-5.2
@@ -73,7 +73,7 @@ POSTHOG_KEY=
 SENTRY_DSN=
 ```
 
-OpenRouter için `OPENROUTER_API_KEY` değerine sadece anahtarı yazın; başına `Bearer` eklemeyin. Uygulama sırayı `AI_PROVIDER_ORDER` ile takip eder; ilk çalışan sağlayıcı raporu üretir, tamamı başarısızsa deterministik uzman raporu devreye girer.
+OpenRouter için `OPENROUTER_API_KEY` değerine sadece anahtarı yazın; başına `Bearer` eklemeyin. GLM 5.2'yi OpenRouter üzerinden kullanmak için `OPENROUTER_MODEL=z-ai/glm-5.2` kullanın. Uygulama sırayı `AI_PROVIDER_ORDER` ile takip eder; ilk çalışan sağlayıcı raporu üretir, tamamı başarısızsa deterministik uzman raporu devreye girer.
 
 ## Healthcheck
 

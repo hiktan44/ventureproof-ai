@@ -66,7 +66,7 @@ OPENAI_MODEL=gpt-5.2
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENROUTER_API_KEY=
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_MODEL=
+OPENROUTER_MODEL=z-ai/glm-5.2
 GLM_API_KEY=
 GLM_BASE_URL=https://api.z.ai/api/coding/paas/v4
 GLM_MODEL=glm-5.2
@@ -83,7 +83,7 @@ POSTHOG_KEY=
 SENTRY_DSN=
 ```
 
-OpenRouter anahtarını ham haliyle yazın; başına `Bearer` eklemeyin. `OPENROUTER_MODEL` alanına OpenRouter model slug'ı yazılır, örnek: `openai/gpt-5.2`, `anthropic/claude-sonnet-4.5` veya OpenRouter panelinde seçtiğiniz model adı.
+OpenRouter anahtarını ham haliyle yazın; başına `Bearer` eklemeyin. GLM 5.2'yi OpenRouter üzerinden kullanmak için `OPENROUTER_MODEL=z-ai/glm-5.2` yazın. Farklı model kullanacaksanız OpenRouter panelindeki model slug'ını girin.
 
 ## Production notes
 
