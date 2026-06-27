@@ -15,7 +15,7 @@ Evidence-first AI startup validation and launch planning platform inspired by th
 - Validation report with scores, go/stop signals and next actions
 - Automatic experiment board with evidence guardrail
 - Mock billing that adds credits without external keys
-- Markdown report export
+- PDF and Word report export
 - Paid journey module generation for market, business plan, brand, visual identity and marketing suite
 - Public share links for validation reports and generated artifacts
 - Credit ledger view in the dashboard

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   CreditCard,
   Download,
+  FileDown,
   FileText,
   FlaskConical,
   Globe2,
@@ -215,36 +216,11 @@ function DashboardContent() {
     router.push("/");
   }
 
-  function exportReport() {
+  function exportReport(format: "pdf" | "docx") {
     if (!selectedIdea || !report) return;
-    const markdown = [
-      `# ${selectedIdea.title}`,
-      "",
-      report.executiveSummary,
-      "",
-      `${t("score.viability")}: ${report.scores.viability}/100`,
-      `${t("score.confidence")}: ${report.scores.confidence}/100`,
-      "",
-      `## ${t("dashboard.goSignals")}`,
-      ...report.goSignals.map((signal) => `- ${signal}`),
-      "",
-      `## ${t("dashboard.stopSignals")}`,
-      ...report.stopSignals.map((signal) => `- ${signal}`),
-      "",
-      ...report.sections.flatMap((section) => [`## ${section.title}`, section.summary, ...section.bullets.map((bullet) => `- ${bullet}`), ""]),
-      "",
-      `## ${t("share.artifact")}`,
-      ...Object.values(selectedIdea.moduleOutputs).flatMap((output) =>
-        output ? [`### ${output.title}`, output.summary, ...output.artifacts.map((artifact) => `- ${artifact.label}: ${artifact.value}`), ...output.bullets.map((bullet) => `- ${bullet}`), ""] : []
-      )
-    ].join("\n");
-    const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${selectedIdea.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-report.md`;
+    anchor.href = `/api/ideas/${selectedIdea.id}/export?format=${format}`;
     anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   if (loading) {
@@ -315,9 +291,13 @@ function DashboardContent() {
                     Admin
                   </Link>
                 ) : null}
-                <button className="btn ghost" onClick={exportReport} disabled={!report}>
+                <button className="btn ghost" onClick={() => exportReport("pdf")} disabled={!report}>
                   <Download size={16} />
-                  {t("dashboard.export")}
+                  {t("dashboard.exportPdf")}
+                </button>
+                <button className="btn ghost" onClick={() => exportReport("docx")} disabled={!report}>
+                  <FileDown size={16} />
+                  {t("dashboard.exportWord")}
                 </button>
                 <button className="btn ghost" onClick={shareReport} disabled={!report}>
                   <Share2 size={16} />
