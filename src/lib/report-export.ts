@@ -1,6 +1,6 @@
-import fs from "node:fs";
-import * as pdfMake from "pdfmake";
-import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
+import * as pdfMake from "pdfmake/build/pdfmake";
+import * as pdfMakeVfs from "pdfmake/build/vfs_fonts";
+import type { Content, TDocumentDefinitions, TVirtualFileSystem } from "pdfmake/interfaces";
 import {
   AlignmentType,
   Document,
@@ -39,12 +39,6 @@ function moduleOutputs(idea: Idea): ModuleOutput[] {
   return Object.values(idea.moduleOutputs).filter((output): output is ModuleOutput => Boolean(output));
 }
 
-function resolvePdfFont(candidates: string[]) {
-  const font = candidates.find((candidate) => fs.existsSync(candidate));
-  if (!font) throw new Error("PDF font bulunamadı.");
-  return font;
-}
-
 function pdfHeading(text: string, style: "header" | "section" | "subsection" = "section"): Content {
   return { text, style, margin: [0, style === "header" ? 0 : 14, 0, 6] };
 }
@@ -58,42 +52,8 @@ function pdfList(items: string[]): Content {
 }
 
 function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
-  pdfMake.setFonts({
-    Roboto: {
-      normal: resolvePdfFont([
-        "/app/fonts/Roboto-Regular.ttf",
-        "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans.ttf",
-        "/System/Library/Fonts/Supplemental/Verdana.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf"
-      ]),
-      bold: resolvePdfFont([
-        "/app/fonts/Roboto-Medium.ttf",
-        "/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
-        "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-      ]),
-      italics: resolvePdfFont([
-        "/app/fonts/Roboto-Italic.ttf",
-        "/usr/share/fonts/ttf-dejavu/DejaVuSans-Oblique.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans-Oblique.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans-Oblique.ttf",
-        "/System/Library/Fonts/Supplemental/Verdana Italic.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Italic.ttf"
-      ]),
-      bolditalics: resolvePdfFont([
-        "/app/fonts/Roboto-MediumItalic.ttf",
-        "/usr/share/fonts/ttf-dejavu/DejaVuSans-BoldOblique.ttf",
-        "/usr/share/fonts/dejavu/DejaVuSans-BoldOblique.ttf",
-        "/usr/share/fonts/TTF/DejaVuSans-BoldOblique.ttf",
-        "/System/Library/Fonts/Supplemental/Verdana Bold Italic.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf"
-      ])
-    }
-  });
+  const vfs = ("default" in pdfMakeVfs ? pdfMakeVfs.default : pdfMakeVfs) as TVirtualFileSystem;
+  pdfMake.addVirtualFileSystem(vfs);
   return pdfMake.createPdf(documentDefinition).getBuffer();
 }
 
