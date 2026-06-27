@@ -1,5 +1,6 @@
 import fs from "node:fs";
-import PDFDocument from "pdfkit";
+import * as pdfMake from "pdfmake";
+import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
 import {
   AlignmentType,
   Document,
@@ -38,80 +39,101 @@ function moduleOutputs(idea: Idea): ModuleOutput[] {
   return Object.values(idea.moduleOutputs).filter((output): output is ModuleOutput => Boolean(output));
 }
 
-function findPdfFont() {
-  const candidates = [
-    "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/dejavu/DejaVuSans.ttf",
-    "/Library/Fonts/Arial Unicode.ttf",
-    "/System/Library/Fonts/Supplemental/Arial.ttf",
-    "/System/Library/Fonts/Supplemental/Verdana.ttf"
-  ];
-  return candidates.find((candidate) => fs.existsSync(candidate));
+function resolvePdfFont(candidates: string[]) {
+  const font = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!font) throw new Error("PDF font bulunamadı.");
+  return font;
 }
 
-function addPdfHeading(doc: PDFKit.PDFDocument, text: string, level: 1 | 2 | 3 = 2) {
-  const size = level === 1 ? 22 : level === 2 ? 15 : 12;
-  doc.moveDown(level === 1 ? 0.8 : 0.6).fontSize(size).fillColor("#15201b").text(text, { continued: false });
+function pdfHeading(text: string, style: "header" | "section" | "subsection" = "section"): Content {
+  return { text, style, margin: [0, style === "header" ? 0 : 14, 0, 6] };
 }
 
-function addPdfList(doc: PDFKit.PDFDocument, items: string[]) {
-  doc.fontSize(9.5).fillColor("#37463d");
-  for (const item of items) {
-    doc.text(`- ${item}`, { indent: 12, lineGap: 3 });
-    doc.moveDown(0.2);
-  }
+function pdfParagraph(text: string, bold = false): Content {
+  return { text, bold, margin: [0, 0, 0, 6] };
+}
+
+function pdfList(items: string[]): Content {
+  return { ul: items, margin: [0, 0, 0, 8] };
+}
+
+function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
+  pdfMake.setFonts({
+    Roboto: {
+      normal: resolvePdfFont([
+        "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/Verdana.ttf",
+        "/System/Library/Fonts/Supplemental/Arial.ttf"
+      ]),
+      bold: resolvePdfFont([
+        "/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+      ]),
+      italics: resolvePdfFont([
+        "/usr/share/fonts/ttf-dejavu/DejaVuSans-Oblique.ttf",
+        "/System/Library/Fonts/Supplemental/Verdana Italic.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Italic.ttf"
+      ]),
+      bolditalics: resolvePdfFont([
+        "/usr/share/fonts/ttf-dejavu/DejaVuSans-BoldOblique.ttf",
+        "/System/Library/Fonts/Supplemental/Verdana Bold Italic.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf"
+      ])
+    }
+  });
+  return pdfMake.createPdf(documentDefinition).getBuffer();
 }
 
 export async function createReportPdf({ idea, report }: ExportPayload): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 46, info: { Title: idea.title, Author: "VentureProof AI" } });
-    const chunks: Buffer[] = [];
-    const font = findPdfFont();
-    if (font) doc.font(font);
+  const content: Content[] = [
+    { text: "VentureProof AI", alignment: "right", color: "#657268", fontSize: 9 },
+    pdfHeading(idea.title, "header"),
+    pdfParagraph(report.executiveSummary),
+    pdfHeading("Skorlar"),
+    {
+      columns: [
+        pdfList([`Yaşayabilirlik: ${report.scores.viability}/100`, `Güven: ${report.scores.confidence}/100`, `Talep: ${report.scores.demand}/100`]),
+        pdfList([`Uygulanabilirlik: ${report.scores.feasibility}/100`, `Para kazanma: ${report.scores.monetization}/100`, `Risk: ${report.scores.risk}/100`])
+      ]
+    },
+    pdfHeading("Go Sinyalleri"),
+    pdfList(report.goSignals),
+    pdfHeading("Stop Sinyalleri"),
+    pdfList(report.stopSignals),
+    pdfHeading("Sonraki Aksiyonlar"),
+    pdfList(report.nextActions)
+  ];
 
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-    doc.on("error", reject);
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
+  for (const section of report.sections) {
+    content.push(pdfHeading(section.title));
+    if (section.expert) content.push(pdfParagraph(section.expert, true));
+    content.push(pdfParagraph(section.summary), pdfList(section.bullets));
+  }
 
-    doc.fontSize(9).fillColor("#657268").text("VentureProof AI", { align: "right" });
-    addPdfHeading(doc, idea.title, 1);
-    doc.fontSize(11).fillColor("#37463d").text(report.executiveSummary, { lineGap: 4 });
-
-    addPdfHeading(doc, "Skorlar", 2);
-    doc.fontSize(10).fillColor("#15201b").text(`Yaşayabilirlik: ${report.scores.viability}/100`);
-    doc.text(`Güven: ${report.scores.confidence}/100`);
-    doc.text(`Talep: ${report.scores.demand}/100`);
-    doc.text(`Uygulanabilirlik: ${report.scores.feasibility}/100`);
-    doc.text(`Para kazanma: ${report.scores.monetization}/100`);
-    doc.text(`Risk: ${report.scores.risk}/100`);
-
-    addPdfHeading(doc, "Go Sinyalleri", 2);
-    addPdfList(doc, report.goSignals);
-    addPdfHeading(doc, "Stop Sinyalleri", 2);
-    addPdfList(doc, report.stopSignals);
-    addPdfHeading(doc, "Sonraki Aksiyonlar", 2);
-    addPdfList(doc, report.nextActions);
-
-    for (const section of report.sections) {
-      addPdfHeading(doc, section.title, 2);
-      if (section.expert) doc.fontSize(9).fillColor("#657268").text(section.expert);
-      doc.fontSize(10).fillColor("#37463d").text(section.summary, { lineGap: 3 });
-      addPdfList(doc, section.bullets);
+  const outputs = moduleOutputs(idea);
+  if (outputs.length) {
+    content.push(pdfHeading("Üretilen Modül Çıktıları"));
+    for (const output of outputs) {
+      content.push(pdfHeading(output.title, "subsection"));
+      content.push(pdfParagraph(output.summary));
+      content.push(pdfList([...output.artifacts.map((artifact) => `${artifact.label}: ${artifact.value}`), ...output.bullets]));
     }
+  }
 
-    const outputs = moduleOutputs(idea);
-    if (outputs.length) {
-      addPdfHeading(doc, "Üretilen Modül Çıktıları", 2);
-      for (const output of outputs) {
-        addPdfHeading(doc, output.title, 3);
-        doc.fontSize(10).fillColor("#37463d").text(output.summary, { lineGap: 3 });
-        addPdfList(doc, [...output.artifacts.map((artifact) => `${artifact.label}: ${artifact.value}`), ...output.bullets]);
-      }
-    }
+  content.push(pdfHeading("Kaynaklar ve Kanıt Etiketleri"));
+  content.push(pdfList(report.sources.map((source) => `${source.title} (${source.kind}, güven: ${source.confidence}/100)`)));
 
-    addPdfHeading(doc, "Kaynaklar ve Kanıt Etiketleri", 2);
-    addPdfList(doc, report.sources.map((source) => `${source.title} (${source.kind}, güven: ${source.confidence}/100)`));
-    doc.end();
+  return pdfBuffer({
+    info: { title: idea.title, author: "VentureProof AI" },
+    defaultStyle: { font: "Roboto", fontSize: 10, color: "#37463d", lineHeight: 1.18 },
+    styles: {
+      header: { fontSize: 22, bold: true, color: "#15201b" },
+      section: { fontSize: 14, bold: true, color: "#15201b" },
+      subsection: { fontSize: 11, bold: true, color: "#15201b" }
+    },
+    pageMargins: [46, 46, 46, 46],
+    content
   });
 }
 
