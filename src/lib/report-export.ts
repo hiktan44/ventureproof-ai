@@ -63,24 +63,28 @@ function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
       normal: resolvePdfFont([
         "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
         "/System/Library/Fonts/Supplemental/Verdana.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf"
       ]),
       bold: resolvePdfFont([
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
         "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
       ]),
       italics: resolvePdfFont([
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-Oblique.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Oblique.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Oblique.ttf",
         "/System/Library/Fonts/Supplemental/Verdana Italic.ttf",
         "/System/Library/Fonts/Supplemental/Arial Italic.ttf"
       ]),
       bolditalics: resolvePdfFont([
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-BoldOblique.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-BoldOblique.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-BoldOblique.ttf",
         "/System/Library/Fonts/Supplemental/Verdana Bold Italic.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold Italic.ttf"
       ])
