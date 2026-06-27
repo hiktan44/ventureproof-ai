@@ -1,4 +1,5 @@
 import type { Experiment, Idea, IdeaContext, ModuleKey, ModuleOutput, Report, ReportSection, Scores, Source } from "@/types/domain";
+import { completeJson } from "@/lib/llm";
 import { clampScore, nowIso, uid } from "@/lib/utils";
 
 const defaultContext: IdeaContext = {
@@ -305,6 +306,141 @@ export function generateValidationReport(idea: Pick<Idea, "id" | "description" |
   };
 }
 
+type LlmSection = {
+  category?: ReportSection["category"];
+  title?: string;
+  summary?: string;
+  bullets?: string[];
+};
+
+type LlmReportPayload = {
+  executiveSummary?: string;
+  goSignals?: string[];
+  stopSignals?: string[];
+  nextActions?: string[];
+  sections?: LlmSection[];
+};
+
+const sectionCategoryOrder: NonNullable<ReportSection["category"]>[] = ["summary", "market", "competition", "financials", "risk", "gtm", "roadmap"];
+
+function parseLlmReport(content: string): LlmReportPayload | null {
+  try {
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed as LlmReportPayload;
+  } catch {
+    return null;
+  }
+}
+
+function cleanList(value: unknown, fallback: string[], minLength = 18) {
+  if (!Array.isArray(value)) return fallback;
+  const cleaned = value
+    .filter((entry): entry is string => typeof entry === "string")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length >= minLength)
+    .slice(0, 6);
+  return cleaned.length >= 3 ? cleaned : fallback;
+}
+
+function cleanText(value: unknown, fallback: string, minLength = 80) {
+  if (typeof value !== "string") return fallback;
+  const cleaned = value.trim();
+  return cleaned.length >= minLength ? cleaned : fallback;
+}
+
+function mergeLlmSections(base: Report, payload: LlmReportPayload) {
+  if (!Array.isArray(payload.sections)) return base.sections;
+
+  return base.sections.map((baseSection) => {
+    const candidate = payload.sections?.find((entry) => entry.category === baseSection.category);
+    if (!candidate) return baseSection;
+    return {
+      ...baseSection,
+      title: typeof candidate.title === "string" && candidate.title.trim().length > 8 ? candidate.title.trim() : baseSection.title,
+      summary: cleanText(candidate.summary, baseSection.summary, 70),
+      bullets: cleanList(candidate.bullets, baseSection.bullets, 24)
+    };
+  });
+}
+
+export async function generateValidationReportWithLLM(idea: Pick<Idea, "id" | "description" | "context" | "reports">): Promise<Report> {
+  const base = generateValidationReport(idea);
+  const categories = sectionCategoryOrder.join(", ");
+  const llmResult = await completeJson(
+    [
+      {
+        role: "system",
+        content:
+          "Sen VentureProof AI içindeki kıdemli uzman ajan kurulunun koordinatörüsün. Sadece geçerli JSON döndür. " +
+          "Türkçe, ayrıntılı, kaynak/varsayım ayrımı yapan, yatırımcı ve kurucu seviyesinde uygulanabilir analiz üret. " +
+          "Genel geçer tavsiye verme; segment, coğrafya, iş modeli, bütçe ve aşamaya göre konuş."
+      },
+      {
+        role: "user",
+        content: JSON.stringify({
+          task:
+            "Aşağıdaki startup fikri için mevcut deterministik raporu uzman ajan seviyesinde zenginleştir. " +
+            "JSON şeması: executiveSummary:string, goSignals:string[], stopSignals:string[], nextActions:string[], " +
+            `sections:{category:'${categories.replace(/, /g, "'|'")}', title:string, summary:string, bullets:string[]}[]`,
+          idea: {
+            description: idea.description,
+            context: idea.context
+          },
+          baseReport: {
+            scores: base.scores,
+            executiveSummary: base.executiveSummary,
+            goSignals: base.goSignals,
+            stopSignals: base.stopSignals,
+            nextActions: base.nextActions,
+            sections: base.sections.map((sectionItem) => ({
+              category: sectionItem.category,
+              expert: sectionItem.expert,
+              title: sectionItem.title,
+              summary: sectionItem.summary,
+              bullets: sectionItem.bullets
+            }))
+          },
+          qualityRules: [
+            "Her section için en az 4 ayrıntılı bullet yaz.",
+            "Pazar, finans, risk ve GTM bölümlerinde ölçülebilir eşikler, karar kuralları ve yanlış pozitif riskleri olsun.",
+            "Varsayım olan şeyleri kesin gerçek gibi sunma.",
+            "Rakip veya kaynak uydurma; dış veri yoksa bunu varsayım/araştırma ihtiyacı olarak yaz.",
+            "Başlıklar Türkçe olsun."
+          ]
+        })
+      }
+    ],
+    { temperature: 0.35, maxTokens: 5000 }
+  );
+
+  if (!llmResult) return base;
+
+  const payload = parseLlmReport(llmResult.content);
+  if (!payload) return base;
+
+  const llmSource: Source = {
+    id: uid("src"),
+    title: `Uzman LLM sentezi: ${llmResult.provider}/${llmResult.model}`,
+    kind: "inference",
+    confidence: 76,
+    refreshedAt: nowIso()
+  };
+
+  return {
+    ...base,
+    executiveSummary: cleanText(payload.executiveSummary, base.executiveSummary, 120),
+    goSignals: cleanList(payload.goSignals, base.goSignals),
+    stopSignals: cleanList(payload.stopSignals, base.stopSignals),
+    nextActions: cleanList(payload.nextActions, base.nextActions),
+    sources: [...base.sources, llmSource],
+    sections: mergeLlmSections(base, payload).map((sectionItem) => ({
+      ...sectionItem,
+      sourceIds: [...new Set([...sectionItem.sourceIds, llmSource.id])]
+    }))
+  };
+}
+
 export function generateExperiments(ideaId: string): Experiment[] {
   const createdAt = nowIso();
   return [
@@ -504,4 +640,3 @@ export function createModuleOutput(module: Exclude<ModuleKey, "validation">, ide
     sourceIds
   };
 }
-

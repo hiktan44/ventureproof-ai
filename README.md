@@ -9,7 +9,8 @@ Evidence-first AI startup validation and launch planning platform inspired by th
 - 100-credit signup bonus
 - Founder dashboard with app-contained idea creation flow
 - Credit ledger persisted in `.data/ventureproof.json`
-- Deterministic mock AI provider for validation reports
+- OpenAI-compatible AI provider with OpenAI, OpenRouter and GLM fallback
+- Deterministic deep report fallback when no LLM key is configured
 - Evidence labels: verified, inference and user-provided
 - Validation report with scores, go/stop signals and next actions
 - Automatic experiment board with evidence guardrail
@@ -61,6 +62,16 @@ The app currently runs without secrets. Production integrations can be added beh
 
 ```bash
 OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.2
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENROUTER_API_KEY=
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=
+GLM_API_KEY=
+GLM_BASE_URL=https://api.z.ai/api/coding/paas/v4
+GLM_MODEL=glm-5.2
+AI_PROVIDER_ORDER=openai,openrouter,glm
+NEXT_PUBLIC_APP_URL=https://ventureproof.seymata.com
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 GOOGLE_CLIENT_ID=
@@ -72,11 +83,13 @@ POSTHOG_KEY=
 SENTRY_DSN=
 ```
 
+OpenRouter anahtarını ham haliyle yazın; başına `Bearer` eklemeyin. `OPENROUTER_MODEL` alanına OpenRouter model slug'ı yazılır, örnek: `openai/gpt-5.2`, `anthropic/claude-sonnet-4.5` veya OpenRouter panelinde seçtiğiniz model adı.
+
 ## Production notes
 
 - Replace `.data/ventureproof.json` with Postgres tables matching the domain types in `src/types/domain.ts`.
 - Replace mock auth with Auth.js, Clerk or Supabase Auth.
 - Replace mock billing in `src/app/api/billing/purchase/route.ts` with Stripe Checkout and webhooks.
 - Replace module generation in `src/app/api/ideas/[id]/modules/[module]/route.ts` with queued background jobs before real traffic.
-- Replace `src/lib/ai-provider.ts` with a provider abstraction that supports research, reasoning, citations and image generation.
+- Extend `src/lib/ai-provider.ts` with queued research, citations and image generation jobs.
 - Keep the credit ledger as the source of truth for all paid AI work.

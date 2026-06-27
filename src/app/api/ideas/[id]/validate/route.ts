@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateExperiments, generateValidationReport } from "@/lib/ai-provider";
+import { generateExperiments, generateValidationReportWithLLM } from "@/lib/ai-provider";
 import { publicUser, readDb, requireCurrentUser, spendCredits, writeDb } from "@/lib/db";
 import { moduleCosts } from "@/types/domain";
 import { nowIso } from "@/lib/utils";
@@ -18,7 +18,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     idea.modules.market = "ready";
     idea.modules.businessPlan = "ready";
     idea.modules.brand = "ready";
-    const report = generateValidationReport(idea);
+    const report = await generateValidationReportWithLLM(idea);
     idea.reports.unshift(report);
     if (idea.experiments.length === 0) {
       idea.experiments = generateExperiments(idea.id);

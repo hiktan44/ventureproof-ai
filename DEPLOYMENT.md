@@ -52,6 +52,16 @@ Optional future secrets:
 
 ```bash
 OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.2
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENROUTER_API_KEY=
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=
+GLM_API_KEY=
+GLM_BASE_URL=https://api.z.ai/api/coding/paas/v4
+GLM_MODEL=glm-5.2
+AI_PROVIDER_ORDER=openai,openrouter,glm
+NEXT_PUBLIC_APP_URL=https://ventureproof.seymata.com
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 GOOGLE_CLIENT_ID=
@@ -62,6 +72,8 @@ TAVILY_API_KEY=
 POSTHOG_KEY=
 SENTRY_DSN=
 ```
+
+OpenRouter için `OPENROUTER_API_KEY` değerine sadece anahtarı yazın; başına `Bearer` eklemeyin. Uygulama sırayı `AI_PROVIDER_ORDER` ile takip eder; ilk çalışan sağlayıcı raporu üretir, tamamı başarısızsa deterministik uzman raporu devreye girer.
 
 ## Healthcheck
 
