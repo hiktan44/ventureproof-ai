@@ -35,7 +35,7 @@ function providerConfigs(): ProviderConfig[] {
     provider: "openrouter",
     apiKey: process.env.OPENROUTER_API_KEY,
     baseUrl: process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1",
-    model: process.env.OPENROUTER_MODEL,
+    model: process.env.OPENROUTER_MODEL || "google/gemini-3.5-flash",
     headers: {
       "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://ventureproof.seymata.com",
       "X-OpenRouter-Title": "VentureProof AI"
@@ -98,4 +98,3 @@ export async function completeJson(messages: ChatMessage[], options?: { temperat
 export function configuredProviders() {
   return providerConfigs().map((config) => `${config.provider}:${config.model}`);
 }
-
