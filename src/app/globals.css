@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: #f6f8f4;
+  --foreground: #15201b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.shell {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid #15201b;
+  background: #15201b;
+  color: white;
+  padding: 0 16px;
+  font-weight: 700;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(21, 32, 27, 0.16);
+}
+
+.btn.secondary {
+  background: white;
+  color: #15201b;
+}
+
+.btn.ghost {
+  background: transparent;
+  color: #15201b;
+  border-color: #d9dfd5;
+}
+
+.panel {
+  border: 1px solid #d9dfd5;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 8px;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid #cfd7cb;
+  border-radius: 8px;
+  background: white;
+  color: #15201b;
+  padding: 12px 14px;
+  outline: none;
+}
+
+.field:focus {
+  border-color: #317c9b;
+  box-shadow: 0 0 0 3px rgba(49, 124, 155, 0.18);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d9dfd5;
+  border-radius: 999px;
+  background: white;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.score-ring {
+  background:
+    radial-gradient(circle at center, white 58%, transparent 60%),
+    conic-gradient(#425f46 calc(var(--score) * 1%), #d9dfd5 0);
+}
