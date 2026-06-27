@@ -22,6 +22,7 @@ RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/node_modules/pdfmake/build/fonts/Roboto ./fonts
 COPY --from=builder /app/node_modules/pdfkit/js/data /ROOT/node_modules/pdfkit/js/data
 RUN mkdir -p /data && chown -R nextjs:nextjs /data /app /ROOT
 USER nextjs

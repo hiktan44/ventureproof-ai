@@ -61,6 +61,7 @@ function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
   pdfMake.setFonts({
     Roboto: {
       normal: resolvePdfFont([
+        "/app/fonts/Roboto-Regular.ttf",
         "/usr/share/fonts/ttf-dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/TTF/DejaVuSans.ttf",
@@ -68,6 +69,7 @@ function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
         "/System/Library/Fonts/Supplemental/Arial.ttf"
       ]),
       bold: resolvePdfFont([
+        "/app/fonts/Roboto-Medium.ttf",
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
         "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
@@ -75,6 +77,7 @@ function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
       ]),
       italics: resolvePdfFont([
+        "/app/fonts/Roboto-Italic.ttf",
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-Oblique.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-Oblique.ttf",
         "/usr/share/fonts/TTF/DejaVuSans-Oblique.ttf",
@@ -82,6 +85,7 @@ function pdfBuffer(documentDefinition: TDocumentDefinitions): Promise<Buffer> {
         "/System/Library/Fonts/Supplemental/Arial Italic.ttf"
       ]),
       bolditalics: resolvePdfFont([
+        "/app/fonts/Roboto-MediumItalic.ttf",
         "/usr/share/fonts/ttf-dejavu/DejaVuSans-BoldOblique.ttf",
         "/usr/share/fonts/dejavu/DejaVuSans-BoldOblique.ttf",
         "/usr/share/fonts/TTF/DejaVuSans-BoldOblique.ttf",
