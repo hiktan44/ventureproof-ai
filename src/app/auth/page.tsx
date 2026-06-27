@@ -4,16 +4,21 @@ import { FormEvent, Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Eye, Sparkles } from "lucide-react";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/lib/i18n";
 
 export default function AuthPage() {
+  const { t } = useLanguage();
+
   return (
-    <Suspense fallback={<main className="grid min-h-screen place-items-center bg-mist">Loading auth...</main>}>
+    <Suspense fallback={<main className="grid min-h-screen place-items-center bg-mist">{t("auth.loading")}</main>}>
       <AuthContent />
     </Suspense>
   );
 }
 
 function AuthContent() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [mode, setMode] = useState(searchParams.get("mode") === "signup" ? "signup" : "login");
@@ -24,7 +29,7 @@ function AuthContent() {
   const [loading, setLoading] = useState(false);
   const idea = searchParams.get("idea") || "";
 
-  const title = useMemo(() => (mode === "signup" ? "Create account" : "Welcome back"), [mode]);
+  const title = useMemo(() => (mode === "signup" ? t("auth.createTitle") : t("auth.welcomeTitle")), [mode, t]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,7 +43,7 @@ function AuthContent() {
     const data = await response.json();
     setLoading(false);
     if (!response.ok) {
-      setError(data.error || "Islem tamamlanamadi.");
+      setError(data.error || t("auth.error"));
       return;
     }
     const next = idea ? `/dashboard?idea=${encodeURIComponent(idea)}` : "/dashboard";
@@ -55,56 +60,59 @@ function AuthContent() {
           VentureProof AI
         </Link>
         <div className="max-w-xl py-16">
-          <p className="text-sm font-black uppercase text-citrus">Founder workspace</p>
-          <h1 className="mt-3 text-5xl font-black leading-tight">Evidence, experiments and launch assets in one dashboard.</h1>
+          <p className="text-sm font-black uppercase text-citrus">{t("auth.workspace")}</p>
+          <h1 className="mt-3 text-5xl font-black leading-tight">{t("auth.heroTitle")}</h1>
           <p className="mt-5 leading-7 text-white/70">
-            Signup includes 100 credits. Production keys for AI, billing and OAuth can be connected after deployment.
+            {t("auth.heroCopy")}
           </p>
         </div>
-        <div className="text-sm text-white/50">No card required for the local MVP.</div>
+        <div className="text-sm text-white/50">{t("auth.noCard")}</div>
       </section>
       <section className="flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="panel p-6 shadow-soft">
+            <div className="mb-5 flex justify-end">
+              <LanguageToggle />
+            </div>
             <h2 className="text-3xl font-black">{title}</h2>
-            <p className="mt-2 text-sm text-ink/60">{mode === "signup" ? "Start validating with 100 credits." : "Continue your validation journey."}</p>
+            <p className="mt-2 text-sm text-ink/60">{mode === "signup" ? t("auth.signupCopy") : t("auth.loginCopy")}</p>
             <div className="mt-6 grid grid-cols-2 rounded-lg border border-line bg-white p-1">
               <button className={`rounded-md py-2 text-sm font-black ${mode === "login" ? "bg-ink text-white" : ""}`} onClick={() => setMode("login")}>
-                Sign In
+                {t("auth.signInTab")}
               </button>
               <button className={`rounded-md py-2 text-sm font-black ${mode === "signup" ? "bg-ink text-white" : ""}`} onClick={() => setMode("signup")}>
-                Sign Up
+                {t("auth.signUpTab")}
               </button>
             </div>
             <form className="mt-6 space-y-4" onSubmit={submit}>
               <label className="block">
-                <span className="text-sm font-bold">Email</span>
+                <span className="text-sm font-bold">{t("auth.email")}</span>
                 <input className="field mt-2" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.com" required />
               </label>
               <label className="block">
-                <span className="text-sm font-bold">Password</span>
+                <span className="text-sm font-bold">{t("auth.password")}</span>
                 <div className="mt-2 flex rounded-lg border border-line bg-white focus-within:border-ocean focus-within:ring-4 focus-within:ring-ocean/20">
                   <input
                     className="w-full rounded-lg border-0 bg-transparent px-3 py-3 outline-none"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder={mode === "signup" ? "Create a password" : "Your password"}
+                    placeholder={mode === "signup" ? t("auth.createPassword") : t("auth.yourPassword")}
                     required
                   />
-                  <button type="button" className="px-3" onClick={() => setShowPassword((value) => !value)} aria-label="Toggle password">
+                  <button type="button" className="px-3" onClick={() => setShowPassword((value) => !value)} aria-label={t("auth.togglePassword")}>
                     <Eye size={18} />
                   </button>
                 </div>
               </label>
               {error ? <div className="rounded-lg border border-coral bg-coral/10 p-3 text-sm font-bold text-ink">{error}</div> : null}
               <button className="btn w-full" disabled={loading} type="submit">
-                {loading ? "Working..." : mode === "signup" ? "Create account" : "Sign in"}
+                {loading ? t("auth.working") : mode === "signup" ? t("auth.createAccount") : t("auth.signIn")}
                 <ArrowRight size={16} />
               </button>
             </form>
             <p className="mt-5 text-xs leading-5 text-ink/55">
-              By continuing you accept local MVP terms. Google OAuth placeholder is intentionally disabled until keys are added.
+              {t("auth.terms")}
             </p>
           </div>
         </div>

@@ -25,9 +25,11 @@ import {
   Share2,
   Sparkles
 } from "lucide-react";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { PricingCards } from "@/components/PricingCards";
 import { ScoreRing } from "@/components/ScoreRing";
-import { moduleCosts, moduleLabels, type CreditLedgerEntry, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report } from "@/types/domain";
+import { useLanguage } from "@/lib/i18n";
+import { moduleCosts, type CreditLedgerEntry, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report } from "@/types/domain";
 
 type SessionUser = { id: string; email: string; name: string; credits: number };
 type TabKey = "summary" | "scores" | "market" | "financials" | "roadmap" | "experiments" | "billing";
@@ -35,22 +37,19 @@ type GeneratableModule = Exclude<ModuleKey, "validation">;
 
 const moduleOrder: ModuleKey[] = ["validation", "market", "businessPlan", "brand", "visual", "marketing"];
 const statuses: ExperimentStatus[] = ["to_validate", "in_progress", "confirmed", "false"];
-const statusLabels: Record<ExperimentStatus, string> = {
-  to_validate: "To validate",
-  in_progress: "In progress",
-  confirmed: "Confirmed",
-  false: "False"
-};
 
 export default function DashboardPage() {
+  const { t } = useLanguage();
+
   return (
-    <Suspense fallback={<main className="grid min-h-screen place-items-center bg-mist">Loading founder workspace...</main>}>
+    <Suspense fallback={<main className="grid min-h-screen place-items-center bg-mist">{t("dashboard.loading")}</main>}>
       <DashboardContent />
     </Suspense>
   );
 }
 
 function DashboardContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -108,7 +107,7 @@ function DashboardContent() {
     const data = await response.json();
     setBusy("");
     if (!response.ok) {
-      setMessage(data.error || "Idea could not be created.");
+      setMessage(data.error || t("dashboard.createError"));
       return;
     }
     setIdeas((current) => [data.idea, ...current]);
@@ -124,7 +123,7 @@ function DashboardContent() {
     const data = await response.json();
     setBusy("");
     if (!response.ok) {
-      setMessage(data.error || "Validation failed.");
+      setMessage(data.error || t("dashboard.validationError"));
       return;
     }
     setUser(data.user);
@@ -141,7 +140,7 @@ function DashboardContent() {
     const data = await response.json();
     setBusy("");
     if (!response.ok) {
-      setMessage(data.error || "Module generation failed.");
+      setMessage(data.error || t("dashboard.moduleError"));
       return;
     }
     setUser(data.user);
@@ -152,7 +151,7 @@ function DashboardContent() {
 
   async function updateExperiment(experiment: Experiment, status: ExperimentStatus) {
     if (status === "confirmed" && experiment.evidence.length === 0) {
-      setMessage("Confirmed icin once evidence ekleyin. PRD guardrail aktif.");
+      setMessage(t("dashboard.confirmEvidence"));
       return;
     }
     const response = await fetch("/api/experiments", {
@@ -168,7 +167,7 @@ function DashboardContent() {
   }
 
   async function addEvidence(experiment: Experiment) {
-    const evidence = window.prompt("Evidence link or note");
+    const evidence = window.prompt(t("dashboard.evidencePrompt"));
     if (!evidence) return;
     const response = await fetch("/api/experiments", {
       method: "PATCH",
@@ -188,7 +187,7 @@ function DashboardContent() {
     const data = await response.json();
     if (response.ok) {
       setUser(data.user);
-      setMessage(`${pack} credits added with mock billing.`);
+      setMessage(t("dashboard.billingAdded", { pack }));
       void refresh();
     }
   }
@@ -202,12 +201,12 @@ function DashboardContent() {
     });
     const data = await response.json();
     if (!response.ok) {
-      setMessage(data.error || "Share link could not be created.");
+      setMessage(data.error || t("dashboard.shareError"));
       return;
     }
     const absoluteUrl = `${window.location.origin}${data.url}`;
     await navigator.clipboard?.writeText(absoluteUrl).catch(() => undefined);
-    setMessage(`Share link ready: ${absoluteUrl}`);
+    setMessage(t("dashboard.shareReady", { url: absoluteUrl }));
   }
 
   async function logout() {
@@ -225,15 +224,15 @@ function DashboardContent() {
       `Viability: ${report.scores.viability}/100`,
       `Confidence: ${report.scores.confidence}/100`,
       "",
-      "## Go signals",
+      `## ${t("dashboard.goSignals")}`,
       ...report.goSignals.map((signal) => `- ${signal}`),
       "",
-      "## Stop signals",
+      `## ${t("dashboard.stopSignals")}`,
       ...report.stopSignals.map((signal) => `- ${signal}`),
       "",
       ...report.sections.flatMap((section) => [`## ${section.title}`, section.summary, ...section.bullets.map((bullet) => `- ${bullet}`), ""]),
       "",
-      "## Generated journey artifacts",
+      `## ${t("share.artifact")}`,
       ...Object.values(selectedIdea.moduleOutputs).flatMap((output) =>
         output ? [`### ${output.title}`, output.summary, ...output.artifacts.map((artifact) => `- ${artifact.label}: ${artifact.value}`), ...output.bullets.map((bullet) => `- ${bullet}`), ""] : []
       )
@@ -250,7 +249,7 @@ function DashboardContent() {
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center bg-mist">
-        <div className="panel p-6 font-black">Loading founder workspace...</div>
+        <div className="panel p-6 font-black">{t("dashboard.loading")}</div>
       </main>
     );
   }
@@ -267,26 +266,26 @@ function DashboardContent() {
           </Link>
           <button className="btn mt-6 w-full" onClick={() => document.getElementById("new-idea")?.scrollIntoView({ behavior: "smooth" })}>
             <Plus size={16} />
-            Validate new idea
+            {t("dashboard.validateNew")}
             <span className="rounded bg-white/15 px-1.5 py-0.5 text-xs">{moduleCosts.validation}cr</span>
           </button>
-          <div className="mt-6 text-xs font-black uppercase text-ink/45">My ideas</div>
+          <div className="mt-6 text-xs font-black uppercase text-ink/45">{t("dashboard.myIdeas")}</div>
           <div className="mt-3 space-y-2">
-            {ideas.length === 0 ? <div className="rounded-lg border border-dashed border-line p-3 text-sm text-ink/55">No ideas yet</div> : null}
+            {ideas.length === 0 ? <div className="rounded-lg border border-dashed border-line p-3 text-sm text-ink/55">{t("dashboard.noIdeas")}</div> : null}
             {ideas.map((idea) => (
               <button key={idea.id} className={`w-full rounded-lg border p-3 text-left text-sm ${selectedIdea?.id === idea.id ? "border-ink bg-mist" : "border-line bg-white"}`} onClick={() => setSelectedId(idea.id)}>
                 <div className="font-black">{idea.title}</div>
-                <div className="mt-1 text-xs text-ink/55">{idea.reports.length ? `${idea.reports.length} report versions` : "Ready to validate"}</div>
+                <div className="mt-1 text-xs text-ink/55">{idea.reports.length ? `${idea.reports.length} ${t("dashboard.reportVersions")}` : t("dashboard.readyToValidate")}</div>
               </button>
             ))}
           </div>
-          <div className="mt-6 text-xs font-black uppercase text-ink/45">Quick tools</div>
+          <div className="mt-6 text-xs font-black uppercase text-ink/45">{t("dashboard.quickTools")}</div>
           <div className="mt-3 grid gap-2">
             {[
-              [Search, "Idea generator"],
-              [BarChart3, "Calculators"],
-              [FileText, "Failure database"],
-              [Globe2, "Benchmarks"]
+              [Search, t("dashboard.ideaGenerator")],
+              [BarChart3, t("dashboard.calculators")],
+              [FileText, t("dashboard.failureDb")],
+              [Globe2, t("dashboard.benchmarks")]
             ].map(([Icon, label]) => {
               const TypedIcon = Icon as typeof Search;
               return (
@@ -303,22 +302,23 @@ function DashboardContent() {
           <header className="sticky top-0 z-10 border-b border-line bg-mist/90 px-5 py-4 backdrop-blur">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-black">{selectedIdea ? selectedIdea.title : "Start your validation journey"}</h1>
-                <p className="text-sm text-ink/60">Evidence-first founder dashboard</p>
+                <h1 className="text-2xl font-black">{selectedIdea ? selectedIdea.title : t("dashboard.startJourney")}</h1>
+                <p className="text-sm text-ink/60">{t("dashboard.subtitle")}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="chip bg-citrus/50">{user?.credits ?? 0} credits</span>
+                <LanguageToggle />
+                <span className="chip bg-citrus/50">{user?.credits ?? 0} {t("dashboard.credits")}</span>
                 <button className="btn ghost" onClick={exportReport} disabled={!report}>
                   <Download size={16} />
-                  Export
+                  {t("dashboard.export")}
                 </button>
                 <button className="btn ghost" onClick={shareReport} disabled={!report}>
                   <Share2 size={16} />
-                  Share
+                  {t("dashboard.share")}
                 </button>
                 <button className="btn secondary" onClick={logout}>
                   <LogOut size={16} />
-                  Logout
+                  {t("dashboard.logout")}
                 </button>
               </div>
             </div>
@@ -330,26 +330,26 @@ function DashboardContent() {
             <section id="new-idea" className="panel p-5 shadow-soft">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-black">Validate a new idea</h2>
-                  <p className="mt-1 text-sm text-ink/60">The form stays inside the app shell. No landing-route leak.</p>
+                  <h2 className="text-xl font-black">{t("dashboard.validateTitle")}</h2>
+                  <p className="mt-1 text-sm text-ink/60">{t("dashboard.validateCopy")}</p>
                 </div>
-                <span className="chip">{moduleCosts.validation} credits</span>
+                <span className="chip">{moduleCosts.validation} {t("dashboard.credits")}</span>
               </div>
               <form className="mt-5 grid gap-4" onSubmit={createIdea}>
-                <textarea className="field min-h-28" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Describe the idea, target customer and problem..." required />
+                <textarea className="field min-h-28" value={description} onChange={(event) => setDescription(event.target.value)} placeholder={t("dashboard.describePlaceholder")} required />
                 <div className="grid gap-3 md:grid-cols-4">
-                  <input className="field" value={context.geography} onChange={(event) => setContext({ ...context, geography: event.target.value })} placeholder="Geography" />
-                  <input className="field" value={context.industry} onChange={(event) => setContext({ ...context, industry: event.target.value })} placeholder="Industry" />
-                  <input className="field" value={context.customerSegment} onChange={(event) => setContext({ ...context, customerSegment: event.target.value })} placeholder="Customer segment" />
+                  <input className="field" value={context.geography} onChange={(event) => setContext({ ...context, geography: event.target.value })} placeholder={t("dashboard.geography")} />
+                  <input className="field" value={context.industry} onChange={(event) => setContext({ ...context, industry: event.target.value })} placeholder={t("dashboard.industry")} />
+                  <input className="field" value={context.customerSegment} onChange={(event) => setContext({ ...context, customerSegment: event.target.value })} placeholder={t("dashboard.customerSegment")} />
                   <select className="field" value={context.stage} onChange={(event) => setContext({ ...context, stage: event.target.value })}>
-                    <option value="idea">Idea</option>
+                    <option value="idea">{t("dashboard.idea")}</option>
                     <option value="mvp">MVP</option>
-                    <option value="revenue">Revenue</option>
-                    <option value="scaling">Scaling</option>
+                    <option value="revenue">{t("dashboard.revenue")}</option>
+                    <option value="scaling">{t("dashboard.scaling")}</option>
                   </select>
                 </div>
                 <button className="btn w-fit" disabled={busy === "create"}>
-                  {busy === "create" ? "Saving..." : "Create idea"}
+                  {busy === "create" ? t("dashboard.saving") : t("dashboard.createIdea")}
                   <ArrowRight size={16} />
                 </button>
               </form>
@@ -372,8 +372,8 @@ function DashboardContent() {
             ) : (
               <div className="mt-5 panel p-8 text-center">
                 <Boxes className="mx-auto text-ocean" size={34} />
-                <h2 className="mt-4 text-2xl font-black">Start your validation journey</h2>
-                <p className="mt-2 text-ink/60">Create your first idea above. You have {user?.credits} credits waiting.</p>
+                <h2 className="mt-4 text-2xl font-black">{t("dashboard.startJourney")}</h2>
+                <p className="mt-2 text-ink/60">{t("dashboard.emptyCopy", { credits: user?.credits ?? 0 })}</p>
               </div>
             )}
           </div>
@@ -384,6 +384,8 @@ function DashboardContent() {
 }
 
 function Journey({ idea, busy, onValidate, onGenerateModule }: { idea: Idea; busy: string; onValidate: () => void; onGenerateModule: (module: GeneratableModule) => void }) {
+  const { moduleLabel, statusLabel, t } = useLanguage();
+
   return (
     <section className="mt-5 panel p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
@@ -394,18 +396,18 @@ function Journey({ idea, busy, onValidate, onGenerateModule }: { idea: Idea; bus
           return (
             <div key={key} className="min-w-52 rounded-lg border border-line bg-white p-4">
               <div className="flex items-center justify-between">
-                <div className="font-black">{moduleLabels[key]}</div>
+                <div className="font-black">{moduleLabel(key)}</div>
                 {status === "locked" ? <Lock size={15} /> : status === "complete" ? <CheckCircle2 className="text-moss" size={16} /> : <span className="chip">{moduleCosts[key]}</span>}
               </div>
-              <div className="mt-2 text-xs font-bold uppercase text-ink/45">{status}</div>
+              <div className="mt-2 text-xs font-bold uppercase text-ink/45">{statusLabel(status)}</div>
               {readyValidation ? (
                 <button className="btn mt-4 w-full" onClick={onValidate} disabled={busy === "validate"}>
-                  {busy === "validate" ? "Generating..." : "Run validation"}
+                  {busy === "validate" ? t("dashboard.generating") : t("dashboard.runValidation")}
                 </button>
               ) : readyModule ? (
                 <button className="btn secondary mt-4 w-full" onClick={() => onGenerateModule(key as GeneratableModule)} disabled={busy === key}>
                   <RefreshCcw size={15} />
-                  {busy === key ? "Generating..." : "Generate"}
+                  {busy === key ? t("dashboard.generating") : t("dashboard.generate")}
                 </button>
               ) : null}
             </div>
@@ -417,12 +419,13 @@ function Journey({ idea, busy, onValidate, onGenerateModule }: { idea: Idea; bus
 }
 
 function Tabs({ tab, setTab }: { tab: TabKey; setTab: (tab: TabKey) => void }) {
+  const { t } = useLanguage();
   const tabs: TabKey[] = ["summary", "scores", "market", "financials", "roadmap", "experiments", "billing"];
   return (
     <div className="mt-5 flex gap-2 overflow-x-auto">
       {tabs.map((entry) => (
         <button key={entry} className={`rounded-lg border px-4 py-2 text-sm font-black capitalize ${tab === entry ? "border-ink bg-ink text-white" : "border-line bg-white"}`} onClick={() => setTab(entry)}>
-          {entry}
+          {t(`tab.${entry}`)}
         </button>
       ))}
     </div>
@@ -430,14 +433,16 @@ function Tabs({ tab, setTab }: { tab: TabKey; setTab: (tab: TabKey) => void }) {
 }
 
 function Summary({ idea, report, onValidate, busy }: { idea: Idea; report?: Report; onValidate: () => void; busy: string }) {
+  const { t, sourceKindLabel } = useLanguage();
+
   if (!report) {
     return (
       <div className="panel p-8 text-center">
         <FlaskConical className="mx-auto text-ocean" size={34} />
-        <h2 className="mt-4 text-2xl font-black">Validation is ready</h2>
-        <p className="mx-auto mt-2 max-w-xl text-ink/60">Spend 40 credits to generate score, signals, sections, sources and experiments for {idea.title}.</p>
+        <h2 className="mt-4 text-2xl font-black">{t("dashboard.validationReady")}</h2>
+        <p className="mx-auto mt-2 max-w-xl text-ink/60">{t("dashboard.validationReadyCopy", { title: idea.title })}</p>
         <button className="btn mt-6" onClick={onValidate} disabled={busy === "validate"}>
-          {busy === "validate" ? "Generating..." : "Run validation"}
+          {busy === "validate" ? t("dashboard.generating") : t("dashboard.runValidation")}
         </button>
       </div>
     );
@@ -445,24 +450,24 @@ function Summary({ idea, report, onValidate, busy }: { idea: Idea; report?: Repo
   return (
     <div className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
       <div className="panel p-5">
-        <ScoreRing value={report.scores.viability} label="Viability" />
+        <ScoreRing value={report.scores.viability} label={t("score.viability")} />
         <div className="mt-5">
-          <h2 className="text-xl font-black">Executive summary</h2>
+          <h2 className="text-xl font-black">{t("dashboard.executiveSummary")}</h2>
           <p className="mt-3 leading-7 text-ink/70">{report.executiveSummary}</p>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
           {report.sources.map((source) => (
             <span key={source.id} className="chip">
               {source.kind === "verified" ? <BadgeCheck size={14} /> : <AlertTriangle size={14} />}
-              {source.kind} {source.confidence}%
+              {sourceKindLabel(source.kind)} {source.confidence}%
             </span>
           ))}
         </div>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <Signal title="Go signals" items={report.goSignals} tone="go" />
-        <Signal title="Stop signals" items={report.stopSignals} tone="stop" />
-        <Signal title="Next actions" items={report.nextActions} tone="next" />
+        <Signal title={t("dashboard.goSignals")} items={report.goSignals} tone="go" />
+        <Signal title={t("dashboard.stopSignals")} items={report.stopSignals} tone="stop" />
+        <Signal title={t("dashboard.nextActions")} items={report.nextActions} tone="next" />
       </div>
     </div>
   );
@@ -483,12 +488,14 @@ function Signal({ title, items, tone }: { title: string; items: string[]; tone: 
 }
 
 function Scores({ report }: { report?: Report }) {
+  const { t } = useLanguage();
+
   if (!report) return <EmptyReport />;
   return (
     <div className="grid gap-4 md:grid-cols-4">
       {Object.entries(report.scores).map(([key, value]) => (
         <div key={key} className="panel p-5">
-          <div className="text-sm font-black uppercase text-moss">{key}</div>
+          <div className="text-sm font-black uppercase text-moss">{t(`score.${key}`)}</div>
           <div className="mt-3 text-4xl font-black">{value}</div>
           <div className="mt-2 h-2 rounded-full bg-line">
             <div className="h-2 rounded-full bg-moss" style={{ width: `${value}%` }} />
@@ -525,6 +532,8 @@ function Sections({ report, filter }: { report?: Report; filter: string }) {
 }
 
 function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modules: GeneratableModule[]; report?: Report; filter: string }) {
+  const { moduleLabel, statusLabel, t } = useLanguage();
+
   return (
     <div className="grid gap-4">
       {modules.map((module) => {
@@ -532,9 +541,9 @@ function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modu
         if (!output) {
           return (
             <div key={module} className="panel p-5">
-              <h2 className="text-xl font-black">{moduleLabels[module]}</h2>
-              <p className="mt-2 text-sm text-ink/65">Generate this journey step from the timeline above to create structured artifacts.</p>
-              <span className="chip mt-4">{idea.modules[module]}</span>
+              <h2 className="text-xl font-black">{moduleLabel(module)}</h2>
+              <p className="mt-2 text-sm text-ink/65">{t("dashboard.generateStep")}</p>
+              <span className="chip mt-4">{statusLabel(idea.modules[module])}</span>
             </div>
           );
         }
@@ -542,10 +551,10 @@ function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modu
           <article key={output.id} className="panel p-5 shadow-soft">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-black uppercase text-moss">{moduleLabels[module]}</p>
+                <p className="text-xs font-black uppercase text-moss">{moduleLabel(module)}</p>
                 <h2 className="mt-1 text-2xl font-black">{output.title}</h2>
               </div>
-              <span className="chip">generated</span>
+              <span className="chip">{t("dashboard.generated")}</span>
             </div>
             <p className="mt-4 leading-7 text-ink/70">{output.summary}</p>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -572,11 +581,13 @@ function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modu
 }
 
 function Experiments({ idea, onStatus, onEvidence }: { idea: Idea; onStatus: (experiment: Experiment, status: ExperimentStatus) => void; onEvidence: (experiment: Experiment) => void }) {
+  const { experimentStatusLabel, t } = useLanguage();
+
   return (
     <div className="grid gap-4 xl:grid-cols-4">
       {statuses.map((status) => (
         <div key={status} className="panel p-3">
-          <h2 className="px-2 py-1 text-sm font-black uppercase text-ink/55">{statusLabels[status]}</h2>
+          <h2 className="px-2 py-1 text-sm font-black uppercase text-ink/55">{experimentStatusLabel(status)}</h2>
           <div className="mt-2 space-y-3">
             {idea.experiments.filter((experiment) => experiment.status === status).map((experiment) => (
               <div key={experiment.id} className="rounded-lg border border-line bg-white p-4">
@@ -586,18 +597,18 @@ function Experiments({ idea, onStatus, onEvidence }: { idea: Idea; onStatus: (ex
                 </div>
                 <p className="mt-2 text-sm leading-6 text-ink/65">{experiment.suggestedExperiment}</p>
                 <div className="mt-3 grid gap-1 text-xs text-ink/55">
-                  <span>Evidence: {experiment.evidenceRequired}</span>
-                  <span>Cost: {experiment.cost}</span>
-                  <span>Duration: {experiment.duration}</span>
-                  <span>Success: {experiment.successThreshold}</span>
+                  <span>{t("dashboard.evidence")}: {experiment.evidenceRequired}</span>
+                  <span>{t("dashboard.cost")}: {experiment.cost}</span>
+                  <span>{t("dashboard.duration")}: {experiment.duration}</span>
+                  <span>{t("dashboard.success")}: {experiment.successThreshold}</span>
                 </div>
                 <button className="btn ghost mt-3 w-full" onClick={() => onEvidence(experiment)}>
-                  Add evidence ({experiment.evidence.length})
+                  {t("dashboard.addEvidence")} ({experiment.evidence.length})
                 </button>
                 <select className="field mt-2" value={experiment.status} onChange={(event) => onStatus(experiment, event.target.value as ExperimentStatus)}>
                   {statuses.map((entry) => (
                     <option key={entry} value={entry}>
-                      {statusLabels[entry]}
+                      {experimentStatusLabel(entry)}
                     </option>
                   ))}
                 </select>
@@ -611,26 +622,28 @@ function Experiments({ idea, onStatus, onEvidence }: { idea: Idea; onStatus: (ex
 }
 
 function Billing({ ledger, onPurchase }: { ledger: CreditLedgerEntry[]; onPurchase: (pack: string) => void }) {
+  const { t } = useLanguage();
+
   return (
     <div>
       <div className="mb-5 panel p-5">
-        <h2 className="text-xl font-black">Mock billing</h2>
-        <p className="mt-2 text-sm text-ink/65">Stripe keys are not connected yet. These buttons write to the credit ledger so the app can be tested end-to-end.</p>
+        <h2 className="text-xl font-black">{t("dashboard.mockBilling")}</h2>
+        <p className="mt-2 text-sm text-ink/65">{t("dashboard.mockBillingCopy")}</p>
       </div>
       <PricingCards onPurchase={onPurchase} />
       <div className="mt-5 panel p-5">
-        <h3 className="font-black">Production handoff</h3>
-        <p className="mt-2 text-sm text-ink/65">Replace this route with Stripe Checkout and keep the credit ledger as the source of truth.</p>
+        <h3 className="font-black">{t("dashboard.handoff")}</h3>
+        <p className="mt-2 text-sm text-ink/65">{t("dashboard.handoffCopy")}</p>
         <button className="btn secondary mt-4">
           <CreditCard size={16} />
-          Stripe-ready placeholder
+          {t("dashboard.stripePlaceholder")}
         </button>
       </div>
       <div className="mt-5 panel p-5">
-        <h3 className="font-black">Credit ledger</h3>
+        <h3 className="font-black">{t("dashboard.creditLedger")}</h3>
         <div className="mt-4 overflow-hidden rounded-lg border border-line">
           {ledger.length === 0 ? (
-            <div className="bg-white p-4 text-sm text-ink/60">No credit events yet.</div>
+            <div className="bg-white p-4 text-sm text-ink/60">{t("dashboard.noCreditEvents")}</div>
           ) : (
             ledger.slice(0, 12).map((entry) => (
               <div key={entry.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-line bg-white p-4 text-sm last:border-0">
@@ -649,11 +662,13 @@ function Billing({ ledger, onPurchase }: { ledger: CreditLedgerEntry[]; onPurcha
 }
 
 function EmptyReport() {
+  const { t } = useLanguage();
+
   return (
     <div className="panel p-8 text-center">
       <Layers3 className="mx-auto text-ocean" size={34} />
-      <h2 className="mt-4 text-2xl font-black">Run validation first</h2>
-      <p className="mt-2 text-ink/60">This section unlocks after the first evidence-first validation report.</p>
+      <h2 className="mt-4 text-2xl font-black">{t("dashboard.runFirst")}</h2>
+      <p className="mt-2 text-ink/60">{t("dashboard.runFirstCopy")}</p>
     </div>
   );
 }
