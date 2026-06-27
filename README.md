@@ -15,6 +15,9 @@ Evidence-first AI startup validation and launch planning platform inspired by th
 - Automatic experiment board with evidence guardrail
 - Mock billing that adds credits without external keys
 - Markdown report export
+- Paid journey module generation for market, business plan, brand, visual identity and marketing suite
+- Public share links for validation reports and generated artifacts
+- Credit ledger view in the dashboard
 
 ## Tech stack
 
@@ -62,6 +65,6 @@ SENTRY_DSN=
 - Replace `.data/ventureproof.json` with Postgres tables matching the domain types in `src/types/domain.ts`.
 - Replace mock auth with Auth.js, Clerk or Supabase Auth.
 - Replace mock billing in `src/app/api/billing/purchase/route.ts` with Stripe Checkout and webhooks.
+- Replace module generation in `src/app/api/ideas/[id]/modules/[module]/route.ts` with queued background jobs before real traffic.
 - Replace `src/lib/ai-provider.ts` with a provider abstraction that supports research, reasoning, citations and image generation.
 - Keep the credit ledger as the source of truth for all paid AI work.
-

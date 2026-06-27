@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         marketing: "locked"
       },
       reports: [],
+      moduleOutputs: {},
       experiments: [],
       createdAt,
       updatedAt: createdAt

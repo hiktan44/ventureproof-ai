@@ -10,7 +10,8 @@ const sessionCookie = "vp_session";
 const emptyDb: Database = {
   users: [],
   ideas: [],
-  creditLedger: []
+  creditLedger: [],
+  shareLinks: []
 };
 
 async function ensureDb() {
@@ -25,7 +26,17 @@ async function ensureDb() {
 export async function readDb(): Promise<Database> {
   await ensureDb();
   const raw = await fs.readFile(dataFile, "utf8");
-  return JSON.parse(raw) as Database;
+  const parsed = JSON.parse(raw) as Partial<Database>;
+  const db: Database = {
+    users: parsed.users ?? [],
+    ideas: (parsed.ideas ?? []).map((idea) => ({
+      ...idea,
+      moduleOutputs: idea.moduleOutputs ?? {}
+    })) as Idea[],
+    creditLedger: parsed.creditLedger ?? [],
+    shareLinks: parsed.shareLinks ?? []
+  };
+  return db;
 }
 
 export async function writeDb(db: Database) {

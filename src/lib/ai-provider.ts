@@ -1,4 +1,4 @@
-import type { Experiment, Idea, IdeaContext, ModuleKey, Report, ReportSection, Scores, Source } from "@/types/domain";
+import type { Experiment, Idea, IdeaContext, ModuleKey, ModuleOutput, Report, ReportSection, Scores, Source } from "@/types/domain";
 import { clampScore, nowIso, uid } from "@/lib/utils";
 
 const defaultContext: IdeaContext = {
@@ -284,8 +284,11 @@ export function generateExperiments(ideaId: string): Experiment[] {
   ];
 }
 
-export function createModulePreview(module: ModuleKey, idea: Idea) {
+export function createModuleOutput(module: Exclude<ModuleKey, "validation">, idea: Idea): ModuleOutput {
+  const latestReport = idea.reports[0];
+  const sourceIds = latestReport?.sources.slice(0, 2).map((source) => source.id) ?? [];
   const common = {
+    id: uid("module"),
     ideaId: idea.id,
     module,
     generatedAt: nowIso()
@@ -294,33 +297,99 @@ export function createModulePreview(module: ModuleKey, idea: Idea) {
     return {
       ...common,
       title: "Market Analysis",
-      bullets: ["TAM/SAM/SOM ranges", "Demand channels", "Competitor map", "Pricing benchmarks"]
+      summary: `${idea.context.geography} icin ${idea.context.industry} pazari once dar bir ICP ve dusuk maliyetli talep kanitlariyla okunmali.`,
+      bullets: [
+        "TAM/SAM/SOM ranges: broad TAM yerine ilk kazanilabilir niche pazar hesaplanir.",
+        "Demand channels: search intent, founder communities, review pain points and local partnerships.",
+        "Competitor map: horizontal incumbents, vertical niche tools and manual service alternatives.",
+        "Pricing benchmarks: pilot fee, monthly SaaS and success-based pricing variants."
+      ],
+      artifacts: [
+        { label: "TAM range", value: "EUR 420M-1.2B directional" },
+        { label: "Initial SAM", value: `${idea.context.geography} ${idea.context.customerSegment}` },
+        { label: "Market stage", value: "Growing, crowded, wedge-sensitive" },
+        { label: "Refresh cadence", value: "Weekly monitoring ready" }
+      ],
+      sourceIds
     };
   }
   if (module === "businessPlan") {
     return {
       ...common,
       title: "Investor-Ready Business Plan",
-      bullets: ["Executive summary", "GTM plan", "36-month projection", "Funding ask"]
+      summary: "Is plani rapordaki kanitlari yatirimci diline cevirir ve ilk MVP kapsamindan finansal varsayimlara kadar baglar.",
+      bullets: [
+        "Executive summary: problem, solution, ICP, timing and traction plan.",
+        "GTM plan: interviews, concierge pilots, partner channel and paid test sequence.",
+        "36-month projection: conservative, base and aggressive revenue scenarios.",
+        "Funding ask: MVP, GTM learning and first hires for 12-month runway."
+      ],
+      artifacts: [
+        { label: "MVP meta-prompt", value: `Build a focused ${idea.context.industry} MVP for ${idea.context.customerSegment} in ${idea.context.geography}.` },
+        { label: "Funding ask", value: "EUR 250k-450k pre-seed range" },
+        { label: "Runway target", value: "12-15 months" },
+        { label: "Break-even path", value: "35-60 paying accounts, assumption-dependent" }
+      ],
+      sourceIds
     };
   }
   if (module === "brand") {
     return {
       ...common,
       title: "Brand Strategy",
-      bullets: ["Positioning", "Archetype", "Messaging pillars", "Objection handling"]
+      summary: "Marka stratejisi guven, hiz ve kanit odakli bir kategori cumlesi etrafinda kurulur.",
+      bullets: [
+        "Positioning: evidence-backed operating system for a narrow founder/customer segment.",
+        "Archetype: Sage + Builder, with plain-language confidence.",
+        "Messaging pillars: measurable value, lower risk, faster launch, local context.",
+        "Objection handling: data trust, switching cost, integration effort and ROI proof."
+      ],
+      artifacts: [
+        { label: "Tagline", value: "Validate with evidence. Launch with confidence." },
+        { label: "Voice", value: "Clear, sharp, founder-to-founder" },
+        { label: "Hero headline", value: "Turn your idea into an evidence-backed launch plan." },
+        { label: "Brand risk", value: "Avoid unverifiable accuracy claims" }
+      ],
+      sourceIds
     };
   }
   if (module === "visual") {
     return {
       ...common,
       title: "Visual Identity",
-      bullets: ["Logo prompts", "Palette", "Typography", "Landing hero direction"]
+      summary: "Gorsel kimlik sakin operasyonel guven ile canli karar enerjisini birlestirir.",
+      bullets: [
+        "Logo prompts: simple mark combining proof, signal and forward motion.",
+        "Palette: ink, moss, citrus, coral and ocean accents.",
+        "Typography: high-legibility sans, compact dashboard weights.",
+        "Landing hero direction: product-first dashboard screenshot, not abstract decoration."
+      ],
+      artifacts: [
+        { label: "Primary color", value: "#15201b" },
+        { label: "Accent color", value: "#d8f171" },
+        { label: "UI mood", value: "Dense, calm, analytical" },
+        { label: "Export", value: "SVG/PNG/Figma placeholder ready" }
+      ],
+      sourceIds
     };
   }
   return {
     ...common,
     title: "Marketing Suite",
-    bullets: ["Meta ads", "LinkedIn ads", "Email sequence", "UGC scripts", "Launch checklist"]
+    summary: "Marketing suite raporun en guclu hipotezlerini kanala ozel launch varliklarina cevirir.",
+    bullets: [
+      "Meta ads: pain-first hooks, fast validation promise and proof-led CTA.",
+      "LinkedIn ads: founder/operator narrative with measurable outcome.",
+      "Email sequence: welcome, value, objection, proof and hard-offer.",
+      "UGC scripts: before/after founder workflow and decision-risk framing.",
+      "Launch checklist: Product Hunt, communities, founder calls and paid test budget."
+    ],
+    artifacts: [
+      { label: "Meta hook", value: "Stop building before your market tells you yes." },
+      { label: "LinkedIn hook", value: "Your next startup decision should have sources, not vibes." },
+      { label: "Email subject", value: "Your idea report is ready. Here is the riskiest assumption." },
+      { label: "UTM plan", value: "utm_campaign=validation_mvp&utm_content={hypothesis}" }
+    ],
+    sourceIds
   };
 }

@@ -27,10 +27,11 @@ import {
 } from "lucide-react";
 import { PricingCards } from "@/components/PricingCards";
 import { ScoreRing } from "@/components/ScoreRing";
-import { moduleCosts, moduleLabels, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report } from "@/types/domain";
+import { moduleCosts, moduleLabels, type CreditLedgerEntry, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report } from "@/types/domain";
 
 type SessionUser = { id: string; email: string; name: string; credits: number };
 type TabKey = "summary" | "scores" | "market" | "financials" | "roadmap" | "experiments" | "billing";
+type GeneratableModule = Exclude<ModuleKey, "validation">;
 
 const moduleOrder: ModuleKey[] = ["validation", "market", "businessPlan", "brand", "visual", "marketing"];
 const statuses: ExperimentStatus[] = ["to_validate", "in_progress", "confirmed", "false"];
@@ -54,6 +55,7 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const [user, setUser] = useState<SessionUser | null>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [ledger, setLedger] = useState<CreditLedgerEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [tab, setTab] = useState<TabKey>("summary");
   const [description, setDescription] = useState(searchParams.get("idea") || "");
@@ -82,6 +84,7 @@ function DashboardContent() {
     }
     setUser(data.user);
     setIdeas(data.ideas || []);
+    setLedger(data.ledger || []);
     setSelectedId((current) => current || data.ideas?.[0]?.id || "");
     setLoading(false);
   }, [router]);
@@ -128,6 +131,23 @@ function DashboardContent() {
     setIdeas((current) => current.map((idea) => (idea.id === ideaId ? data.idea : idea)));
     setSelectedId(ideaId);
     setTab("summary");
+    void refresh();
+  }
+
+  async function generateModule(ideaId: string, module: GeneratableModule) {
+    setBusy(module);
+    setMessage("");
+    const response = await fetch(`/api/ideas/${ideaId}/modules/${module}`, { method: "POST" });
+    const data = await response.json();
+    setBusy("");
+    if (!response.ok) {
+      setMessage(data.error || "Module generation failed.");
+      return;
+    }
+    setUser(data.user);
+    setIdeas((current) => current.map((idea) => (idea.id === ideaId ? data.idea : idea)));
+    setTab(module === "businessPlan" ? "financials" : module === "brand" || module === "visual" || module === "marketing" ? "roadmap" : "market");
+    void refresh();
   }
 
   async function updateExperiment(experiment: Experiment, status: ExperimentStatus) {
@@ -169,7 +189,25 @@ function DashboardContent() {
     if (response.ok) {
       setUser(data.user);
       setMessage(`${pack} credits added with mock billing.`);
+      void refresh();
     }
+  }
+
+  async function shareReport() {
+    if (!selectedIdea || !report) return;
+    const response = await fetch("/api/share", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ideaId: selectedIdea.id })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setMessage(data.error || "Share link could not be created.");
+      return;
+    }
+    const absoluteUrl = `${window.location.origin}${data.url}`;
+    await navigator.clipboard?.writeText(absoluteUrl).catch(() => undefined);
+    setMessage(`Share link ready: ${absoluteUrl}`);
   }
 
   async function logout() {
@@ -193,7 +231,12 @@ function DashboardContent() {
       "## Stop signals",
       ...report.stopSignals.map((signal) => `- ${signal}`),
       "",
-      ...report.sections.flatMap((section) => [`## ${section.title}`, section.summary, ...section.bullets.map((bullet) => `- ${bullet}`), ""])
+      ...report.sections.flatMap((section) => [`## ${section.title}`, section.summary, ...section.bullets.map((bullet) => `- ${bullet}`), ""]),
+      "",
+      "## Generated journey artifacts",
+      ...Object.values(selectedIdea.moduleOutputs).flatMap((output) =>
+        output ? [`### ${output.title}`, output.summary, ...output.artifacts.map((artifact) => `- ${artifact.label}: ${artifact.value}`), ...output.bullets.map((bullet) => `- ${bullet}`), ""] : []
+      )
     ].join("\n");
     const blob = new Blob([markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -269,7 +312,7 @@ function DashboardContent() {
                   <Download size={16} />
                   Export
                 </button>
-                <button className="btn ghost" disabled={!report}>
+                <button className="btn ghost" onClick={shareReport} disabled={!report}>
                   <Share2 size={16} />
                   Share
                 </button>
@@ -314,16 +357,16 @@ function DashboardContent() {
 
             {selectedIdea ? (
               <>
-                <Journey idea={selectedIdea} busy={busy} onValidate={() => validateIdea(selectedIdea.id)} />
+                <Journey idea={selectedIdea} busy={busy} onValidate={() => validateIdea(selectedIdea.id)} onGenerateModule={(module) => generateModule(selectedIdea.id, module)} />
                 <Tabs tab={tab} setTab={setTab} />
                 <div className="mt-5">
                   {tab === "summary" && <Summary idea={selectedIdea} report={report} onValidate={() => validateIdea(selectedIdea.id)} busy={busy} />}
                   {tab === "scores" && <Scores report={report} />}
-                  {tab === "market" && <Sections report={report} filter="Market" />}
-                  {tab === "financials" && <Sections report={report} filter="Financials" />}
-                  {tab === "roadmap" && <Sections report={report} filter="Roadmap" />}
+                  {tab === "market" && <ModuleAndSections idea={selectedIdea} modules={["market"]} report={report} filter="Market" />}
+                  {tab === "financials" && <ModuleAndSections idea={selectedIdea} modules={["businessPlan"]} report={report} filter="Financials" />}
+                  {tab === "roadmap" && <ModuleAndSections idea={selectedIdea} modules={["brand", "visual", "marketing"]} report={report} filter="Roadmap" />}
                   {tab === "experiments" && <Experiments idea={selectedIdea} onStatus={updateExperiment} onEvidence={addEvidence} />}
-                  {tab === "billing" && <Billing onPurchase={purchase} />}
+                  {tab === "billing" && <Billing ledger={ledger} onPurchase={purchase} />}
                 </div>
               </>
             ) : (
@@ -340,13 +383,14 @@ function DashboardContent() {
   );
 }
 
-function Journey({ idea, busy, onValidate }: { idea: Idea; busy: string; onValidate: () => void }) {
+function Journey({ idea, busy, onValidate, onGenerateModule }: { idea: Idea; busy: string; onValidate: () => void; onGenerateModule: (module: GeneratableModule) => void }) {
   return (
     <section className="mt-5 panel p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
         {moduleOrder.map((key) => {
           const status = idea.modules[key];
           const readyValidation = key === "validation" && status !== "complete";
+          const readyModule = key !== "validation" && status === "ready";
           return (
             <div key={key} className="min-w-52 rounded-lg border border-line bg-white p-4">
               <div className="flex items-center justify-between">
@@ -358,10 +402,10 @@ function Journey({ idea, busy, onValidate }: { idea: Idea; busy: string; onValid
                 <button className="btn mt-4 w-full" onClick={onValidate} disabled={busy === "validate"}>
                   {busy === "validate" ? "Generating..." : "Run validation"}
                 </button>
-              ) : status === "ready" ? (
-                <button className="btn secondary mt-4 w-full">
+              ) : readyModule ? (
+                <button className="btn secondary mt-4 w-full" onClick={() => onGenerateModule(key as GeneratableModule)} disabled={busy === key}>
                   <RefreshCcw size={15} />
-                  Preview unlock
+                  {busy === key ? "Generating..." : "Generate"}
                 </button>
               ) : null}
             </div>
@@ -480,6 +524,53 @@ function Sections({ report, filter }: { report?: Report; filter: string }) {
   );
 }
 
+function ModuleAndSections({ idea, modules, report, filter }: { idea: Idea; modules: GeneratableModule[]; report?: Report; filter: string }) {
+  return (
+    <div className="grid gap-4">
+      {modules.map((module) => {
+        const output = idea.moduleOutputs[module];
+        if (!output) {
+          return (
+            <div key={module} className="panel p-5">
+              <h2 className="text-xl font-black">{moduleLabels[module]}</h2>
+              <p className="mt-2 text-sm text-ink/65">Generate this journey step from the timeline above to create structured artifacts.</p>
+              <span className="chip mt-4">{idea.modules[module]}</span>
+            </div>
+          );
+        }
+        return (
+          <article key={output.id} className="panel p-5 shadow-soft">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase text-moss">{moduleLabels[module]}</p>
+                <h2 className="mt-1 text-2xl font-black">{output.title}</h2>
+              </div>
+              <span className="chip">generated</span>
+            </div>
+            <p className="mt-4 leading-7 text-ink/70">{output.summary}</p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {output.artifacts.map((artifact) => (
+                <div key={artifact.label} className="rounded-lg border border-line bg-white p-4">
+                  <div className="text-xs font-black uppercase text-ink/45">{artifact.label}</div>
+                  <div className="mt-1 font-bold">{artifact.value}</div>
+                </div>
+              ))}
+            </div>
+            <ul className="mt-5 grid gap-2 text-sm text-ink/70">
+              {output.bullets.map((bullet) => (
+                <li key={bullet} className="rounded-lg border border-line bg-white p-3">
+                  {bullet}
+                </li>
+              ))}
+            </ul>
+          </article>
+        );
+      })}
+      <Sections report={report} filter={filter} />
+    </div>
+  );
+}
+
 function Experiments({ idea, onStatus, onEvidence }: { idea: Idea; onStatus: (experiment: Experiment, status: ExperimentStatus) => void; onEvidence: (experiment: Experiment) => void }) {
   return (
     <div className="grid gap-4 xl:grid-cols-4">
@@ -519,7 +610,7 @@ function Experiments({ idea, onStatus, onEvidence }: { idea: Idea; onStatus: (ex
   );
 }
 
-function Billing({ onPurchase }: { onPurchase: (pack: string) => void }) {
+function Billing({ ledger, onPurchase }: { ledger: CreditLedgerEntry[]; onPurchase: (pack: string) => void }) {
   return (
     <div>
       <div className="mb-5 panel p-5">
@@ -534,6 +625,24 @@ function Billing({ onPurchase }: { onPurchase: (pack: string) => void }) {
           <CreditCard size={16} />
           Stripe-ready placeholder
         </button>
+      </div>
+      <div className="mt-5 panel p-5">
+        <h3 className="font-black">Credit ledger</h3>
+        <div className="mt-4 overflow-hidden rounded-lg border border-line">
+          {ledger.length === 0 ? (
+            <div className="bg-white p-4 text-sm text-ink/60">No credit events yet.</div>
+          ) : (
+            ledger.slice(0, 12).map((entry) => (
+              <div key={entry.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-line bg-white p-4 text-sm last:border-0">
+                <div>
+                  <div className="font-black">{entry.reason}</div>
+                  <div className="text-xs text-ink/50">{new Date(entry.createdAt).toLocaleString()}</div>
+                </div>
+                <div className={entry.amount > 0 ? "font-black text-moss" : "font-black text-coral"}>{entry.amount > 0 ? `+${entry.amount}` : entry.amount}</div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

@@ -101,6 +101,21 @@ export type Report = {
   sections: ReportSection[];
 };
 
+export type ModuleOutput = {
+  id: string;
+  ideaId: string;
+  module: Exclude<ModuleKey, "validation">;
+  title: string;
+  generatedAt: string;
+  summary: string;
+  bullets: string[];
+  artifacts: {
+    label: string;
+    value: string;
+  }[];
+  sourceIds: string[];
+};
+
 export type Idea = {
   id: string;
   userId: string;
@@ -109,15 +124,25 @@ export type Idea = {
   context: IdeaContext;
   modules: Record<ModuleKey, ModuleStatus>;
   reports: Report[];
+  moduleOutputs: Partial<Record<Exclude<ModuleKey, "validation">, ModuleOutput>>;
   experiments: Experiment[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type ShareLink = {
+  id: string;
+  ideaId: string;
+  userId: string;
+  token: string;
+  createdAt: string;
 };
 
 export type Database = {
   users: User[];
   ideas: Idea[];
   creditLedger: CreditLedgerEntry[];
+  shareLinks: ShareLink[];
 };
 
 export const moduleCosts: Record<ModuleKey, number> = {
