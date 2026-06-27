@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { promises as fs } from "fs";
 import path from "path";
-import type { CreditLedgerEntry, Database, Idea, User } from "@/types/domain";
+import type { CreditLedgerEntry, Database, Idea, PaymentRecord, User } from "@/types/domain";
 import { nowIso, uid } from "@/lib/utils";
 
 const dataDir = process.env.DATA_DIR || path.join(process.cwd(), ".data");
@@ -12,6 +12,7 @@ const emptyDb: Database = {
   users: [],
   ideas: [],
   creditLedger: [],
+  paymentLog: [],
   shareLinks: []
 };
 
@@ -29,12 +30,16 @@ export async function readDb(): Promise<Database> {
   const raw = await fs.readFile(dataFile, "utf8");
   const parsed = JSON.parse(raw) as Partial<Database>;
   const db: Database = {
-    users: parsed.users ?? [],
+    users: (parsed.users ?? []).map((user) => ({
+      ...user,
+      role: user.role ?? "user"
+    })) as User[],
     ideas: (parsed.ideas ?? []).map((idea) => ({
       ...idea,
       moduleOutputs: idea.moduleOutputs ?? {}
     })) as Idea[],
     creditLedger: parsed.creditLedger ?? [],
+    paymentLog: parsed.paymentLog ?? [],
     shareLinks: parsed.shareLinks ?? []
   };
   return db;
@@ -83,11 +88,36 @@ export function publicUser(user: User) {
     email: user.email,
     name: user.name,
     credits: user.credits,
+    role: user.role ?? "user",
     createdAt: user.createdAt
   };
 }
 
-export function addCredits(db: Database, userId: string, amount: number, reason: string, ideaId?: string) {
+export function adminEmails() {
+  return (process.env.ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isAdminUser(db: Database, user: User) {
+  if ((user.role ?? "user") === "admin") return true;
+  if (adminEmails().includes(user.email.toLowerCase())) return true;
+  const firstUser = [...db.users].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+  return firstUser?.id === user.id && !db.users.some((entry) => (entry.role ?? "user") === "admin");
+}
+
+export async function requireAdminUser(): Promise<User> {
+  const user = await requireCurrentUser();
+  const db = await readDb();
+  const fresh = db.users.find((entry) => entry.id === user.id);
+  if (!fresh || !isAdminUser(db, fresh)) {
+    throw new Error("FORBIDDEN");
+  }
+  return fresh;
+}
+
+export function addCredits(db: Database, userId: string, amount: number, reason: string, ideaId?: string, actorUserId?: string) {
   const user = db.users.find((entry) => entry.id === userId);
   if (!user) throw new Error("USER_NOT_FOUND");
   user.credits += amount;
@@ -97,17 +127,28 @@ export function addCredits(db: Database, userId: string, amount: number, reason:
     amount,
     reason,
     ideaId,
+    actorUserId,
     createdAt: nowIso()
   };
   db.creditLedger.unshift(ledger);
   return ledger;
 }
 
-export function spendCredits(db: Database, userId: string, amount: number, reason: string, ideaId?: string) {
+export function spendCredits(db: Database, userId: string, amount: number, reason: string, ideaId?: string, actorUserId?: string) {
   const user = db.users.find((entry) => entry.id === userId);
   if (!user) throw new Error("USER_NOT_FOUND");
   if (user.credits < amount) throw new Error("INSUFFICIENT_CREDITS");
-  return addCredits(db, userId, -amount, reason, ideaId);
+  return addCredits(db, userId, -amount, reason, ideaId, actorUserId);
+}
+
+export function recordPayment(db: Database, input: Omit<PaymentRecord, "id" | "createdAt">) {
+  const payment: PaymentRecord = {
+    id: uid("payment"),
+    createdAt: nowIso(),
+    ...input
+  };
+  db.paymentLog.unshift(payment);
+  return payment;
 }
 
 export function ideasForUser(db: Database, userId: string): Idea[] {

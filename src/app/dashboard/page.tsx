@@ -22,6 +22,7 @@ import {
   Plus,
   RefreshCcw,
   Search,
+  ShieldCheck,
   Share2,
   Sparkles
 } from "lucide-react";
@@ -31,7 +32,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { useLanguage } from "@/lib/i18n";
 import { moduleCosts, type CreditLedgerEntry, type Experiment, type ExperimentStatus, type Idea, type ModuleKey, type Report } from "@/types/domain";
 
-type SessionUser = { id: string; email: string; name: string; credits: number };
+type SessionUser = { id: string; email: string; name: string; credits: number; role?: "user" | "admin" };
 type TabKey = "summary" | "scores" | "market" | "financials" | "roadmap" | "experiments" | "billing";
 type GeneratableModule = Exclude<ModuleKey, "validation">;
 
@@ -308,6 +309,12 @@ function DashboardContent() {
               <div className="flex flex-wrap items-center gap-2">
                 <LanguageToggle />
                 <span className="chip bg-citrus/50">{user?.credits ?? 0} {t("dashboard.credits")}</span>
+                {user?.role === "admin" ? (
+                  <Link className="btn ghost" href="/admin">
+                    <ShieldCheck size={16} />
+                    Admin
+                  </Link>
+                ) : null}
                 <button className="btn ghost" onClick={exportReport} disabled={!report}>
                   <Download size={16} />
                   {t("dashboard.export")}

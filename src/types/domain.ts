@@ -18,6 +18,7 @@ export type User = {
   name: string;
   passwordHash: string;
   credits: number;
+  role?: "user" | "admin";
   createdAt: string;
 };
 
@@ -27,6 +28,20 @@ export type CreditLedgerEntry = {
   amount: number;
   reason: string;
   ideaId?: string;
+  actorUserId?: string;
+  createdAt: string;
+};
+
+export type PaymentRecord = {
+  id: string;
+  userId: string;
+  pack: string;
+  credits: number;
+  amount: number;
+  currency: string;
+  provider: "mock" | "stripe";
+  status: "paid" | "refunded" | "failed";
+  actorUserId?: string;
   createdAt: string;
 };
 
@@ -142,6 +157,7 @@ export type Database = {
   users: User[];
   ideas: Idea[];
   creditLedger: CreditLedgerEntry[];
+  paymentLog: PaymentRecord[];
   shareLinks: ShareLink[];
 };
 

@@ -18,10 +18,11 @@ async function readDb(): Promise<Database> {
       users: parsed.users ?? [],
       ideas: parsed.ideas ?? [],
       creditLedger: parsed.creditLedger ?? [],
+      paymentLog: parsed.paymentLog ?? [],
       shareLinks: parsed.shareLinks ?? []
     } as Database;
   } catch {
-    return { users: [], ideas: [], creditLedger: [], shareLinks: [] };
+    return { users: [], ideas: [], creditLedger: [], paymentLog: [], shareLinks: [] };
   }
 }
 
@@ -35,6 +36,7 @@ async function main() {
       name: "Demo Founder",
       passwordHash: hashPassword(password),
       credits: 1180,
+      role: "admin",
       createdAt: nowIso()
     } satisfies User;
     db.users.push(user);
@@ -45,6 +47,8 @@ async function main() {
       reason: "Seed demo credits",
       createdAt: nowIso()
     });
+  } else if (!user.role) {
+    user.role = "admin";
   }
 
   let idea = db.ideas.find((entry) => entry.userId === user.id);
