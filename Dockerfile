@@ -16,7 +16,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-ENV DATA_DIR=/data
+ENV DATA_DIR=/data SITE_VISITS_ENABLED=1
 RUN apk add --no-cache ttf-dejavu
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 COPY --from=builder /app/public ./public

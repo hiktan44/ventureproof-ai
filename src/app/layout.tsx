@@ -12,6 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="tr" data-scroll-behavior="smooth">
       <body>
         <LanguageProvider>{children}</LanguageProvider>
+        <script defer src="/site-visit-preference.js" data-site-origin="https://ventureproof.seymata.com" data-context="server" />
       </body>
     </html>
   );
