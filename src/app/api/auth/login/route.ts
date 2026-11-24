@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { publicUser, readDb, setSession } from "@/lib/db";
+import { publicUser, readDb, recordLogin, setSession } from "@/lib/db";
 import { hashPassword } from "@/lib/utils";
 
 const schema = z.object({
@@ -16,5 +16,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "E-posta veya şifre hatalı." }, { status: 401 });
   }
   await setSession(user.id);
+  await recordLogin(user.id, "password");
   return NextResponse.json({ user: publicUser(user) });
 }

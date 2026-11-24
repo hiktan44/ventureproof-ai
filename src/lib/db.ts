@@ -1,20 +1,52 @@
 import { cookies } from "next/headers";
+import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
-import type { CreditLedgerEntry, Database, Idea, PaymentRecord, User } from "@/types/domain";
+import type { CreditLedgerEntry, Database, Idea, LoginMethod, LoginRecord, PaymentRecord, User } from "@/types/domain";
 import { nowIso, uid } from "@/lib/utils";
 
 const dataDir = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const dataFile = path.join(dataDir, "ventureproof.json");
 const sessionCookie = "vp_session";
+const loginRetentionMs = 400 * 24 * 60 * 60 * 1000;
 
 const emptyDb: Database = {
   users: [],
   ideas: [],
   creditLedger: [],
   paymentLog: [],
-  shareLinks: []
+  shareLinks: [],
+  logins: []
 };
+
+// Serializes every write to the JSON file inside this process, so the login
+// journal append (read-modify-write) cannot interleave with another write.
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function withWriteLock<T>(task: () => Promise<T>): Promise<T> {
+  const run = writeQueue.then(task, task);
+  writeQueue = run.catch(() => undefined);
+  return run;
+}
+
+function pruneLogins(logins: LoginRecord[]) {
+  const cutoff = Date.now() - loginRetentionMs;
+  return logins.filter((entry) => !(Date.parse(entry.createdAt) < cutoff));
+}
+
+// Routes write back a snapshot they read earlier; keep login entries another
+// request appended in the meantime instead of overwriting them.
+async function mergeStoredLogins(logins: LoginRecord[]) {
+  let stored: LoginRecord[] = [];
+  try {
+    const parsed = JSON.parse(await fs.readFile(dataFile, "utf8")) as Partial<Database>;
+    stored = parsed.logins ?? [];
+  } catch {
+    stored = [];
+  }
+  const known = new Set(stored.map((entry) => entry.id));
+  return pruneLogins([...stored, ...logins.filter((entry) => !known.has(entry.id))]);
+}
 
 async function ensureDb() {
   await fs.mkdir(path.dirname(dataFile), { recursive: true });
@@ -40,14 +72,34 @@ export async function readDb(): Promise<Database> {
     })) as Idea[],
     creditLedger: parsed.creditLedger ?? [],
     paymentLog: parsed.paymentLog ?? [],
-    shareLinks: parsed.shareLinks ?? []
+    shareLinks: parsed.shareLinks ?? [],
+    logins: parsed.logins ?? []
   };
   return db;
 }
 
 export async function writeDb(db: Database) {
-  await ensureDb();
-  await fs.writeFile(dataFile, JSON.stringify(db, null, 2));
+  await withWriteLock(async () => {
+    await ensureDb();
+    db.logins = await mergeStoredLogins(db.logins ?? []);
+    await fs.writeFile(dataFile, JSON.stringify(db, null, 2));
+  });
+}
+
+// Journals one successful session issue. Never throws: a journal failure must
+// not fail the login, and the warning carries no user data.
+export async function recordLogin(userId: string, method: LoginMethod) {
+  try {
+    await withWriteLock(async () => {
+      const db = await readDb();
+      db.logins.push({ id: randomUUID(), userId, method, createdAt: nowIso() });
+      db.logins = pruneLogins(db.logins);
+      await fs.writeFile(dataFile, JSON.stringify(db, null, 2));
+    });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code;
+    console.warn(`Login journal write failed (${code ?? (error instanceof Error ? error.name : "unknown")}); login continues.`);
+  }
 }
 
 export async function getCurrentUser(): Promise<User | null> {

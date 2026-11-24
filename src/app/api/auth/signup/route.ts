@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { addCredits, publicUser, readDb, setSession, writeDb } from "@/lib/db";
+import { addCredits, publicUser, readDb, recordLogin, setSession, writeDb } from "@/lib/db";
 import { hashPassword, nowIso, publicUserName, uid } from "@/lib/utils";
 import type { User } from "@/types/domain";
 
@@ -29,5 +29,6 @@ export async function POST(request: Request) {
   addCredits(db, user.id, 1000, "Kayıt bonusu");
   await writeDb(db);
   await setSession(user.id);
+  await recordLogin(user.id, "register");
   return NextResponse.json({ user: publicUser(user) });
 }

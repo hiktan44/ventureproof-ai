@@ -155,12 +155,22 @@ export type ShareLink = {
   createdAt: string;
 };
 
+export type LoginMethod = "password" | "register";
+
+export type LoginRecord = {
+  id: string;
+  userId: string;
+  method: LoginMethod;
+  createdAt: string;
+};
+
 export type Database = {
   users: User[];
   ideas: Idea[];
   creditLedger: CreditLedgerEntry[];
   paymentLog: PaymentRecord[];
   shareLinks: ShareLink[];
+  logins: LoginRecord[];
 };
 
 export const moduleCosts: Record<ModuleKey, number> = {

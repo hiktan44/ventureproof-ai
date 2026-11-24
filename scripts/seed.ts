@@ -19,10 +19,11 @@ async function readDb(): Promise<Database> {
       ideas: parsed.ideas ?? [],
       creditLedger: parsed.creditLedger ?? [],
       paymentLog: parsed.paymentLog ?? [],
-      shareLinks: parsed.shareLinks ?? []
+      shareLinks: parsed.shareLinks ?? [],
+      logins: parsed.logins ?? []
     } as Database;
   } catch {
-    return { users: [], ideas: [], creditLedger: [], paymentLog: [], shareLinks: [] };
+    return { users: [], ideas: [], creditLedger: [], paymentLog: [], shareLinks: [], logins: [] };
   }
 }
 
