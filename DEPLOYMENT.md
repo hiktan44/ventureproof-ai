@@ -56,7 +56,8 @@ OPENAI_MODEL=gpt-5.2
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENROUTER_API_KEY=
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_MODEL=google/gemini-3.5-flash
+OPENROUTER_MODEL=google/gemini-4-neon
+OPENROUTER_FALLBACK_MODEL=google/gemini-4-hydrogen
 GLM_API_KEY=
 GLM_BASE_URL=https://api.z.ai/api/coding/paas/v4
 GLM_MODEL=glm-5.2
@@ -73,7 +74,7 @@ POSTHOG_KEY=
 SENTRY_DSN=
 ```
 
-OpenRouter için `OPENROUTER_API_KEY` değerine sadece anahtarı yazın; başına `Bearer` eklemeyin. Şimdilik OpenRouter içindeki seçili model `OPENROUTER_MODEL=google/gemini-3.5-flash`. Uygulama sırayı `AI_PROVIDER_ORDER` ile takip eder; ilk çalışan sağlayıcı raporu üretir, tamamı başarısızsa deterministik uzman raporu devreye girer.
+OpenRouter için `OPENROUTER_API_KEY` değerine sadece anahtarı yazın; başına `Bearer` eklemeyin. Varsayılan OpenRouter modeli `OPENROUTER_MODEL=google/gemini-4-neon` (otomatik yedek: `OPENROUTER_FALLBACK_MODEL=google/gemini-4-hydrogen`). Uygulama sırayı `AI_PROVIDER_ORDER` ile takip eder; ilk çalışan sağlayıcı raporu üretir, tamamı başarısızsa deterministik uzman raporu devreye girer.
 
 ## Healthcheck
 

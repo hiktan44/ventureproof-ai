@@ -325,7 +325,8 @@ const sectionCategoryOrder: NonNullable<ReportSection["category"]>[] = ["summary
 
 function parseLlmReport(content: string): LlmReportPayload | null {
   try {
-    const parsed = JSON.parse(content);
+    const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
     return parsed as LlmReportPayload;
   } catch {
@@ -411,7 +412,7 @@ export async function generateValidationReportWithLLM(idea: Pick<Idea, "id" | "d
         })
       }
     ],
-    { temperature: 0.35, maxTokens: 5000 }
+    { temperature: 0.35, maxTokens: 16384 }
   );
 
   if (!llmResult) return base;
